@@ -1,0 +1,43 @@
+{% extends 'base.html' %}
+
+{% block title %}Reports - Convenience Store POS{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <h1 class="mb-4">Reports</h1>
+    
+    <div class="row">
+        <div class="col-md-6 mb-4">
+            <div class="card h-100">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">Sales Report</h5>
+                </div>
+                <div class="card-body">
+                    <p>View detailed sales information including transaction history, total sales, and payment methods.</p>
+                    <div class="d-grid">
+                        <a href="{{ url_for('sales_report') }}" class="btn btn-primary">
+                            <i class="bi bi-graph-up me-1"></i> View Sales Report
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-6 mb-4">
+            <div class="card h-100">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">Inventory Report</h5>
+                </div>
+                <div class="card-body">
+                    <p>View current inventory levels, low stock items, and product information.</p>
+                    <div class="d-grid">
+                        <a href="{{ url_for('inventory_report') }}" class="btn btn-success">
+                            <i class="bi bi-box-seam me-1"></i> View Inventory Report
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

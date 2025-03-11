@@ -1,0 +1,99 @@
+{% extends 'base.html' %}
+
+{% block title %}Receipt - Convenience Store POS{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow">
+                <div class="card-header bg-success text-white">
+                    <h4 class="mb-0">Transaction Complete</h4>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-success mb-4">
+                        <i class="bi bi-check-circle-fill me-2"></i> Transaction has been successfully processed!
+                    </div>
+                    
+                    <div class="card mb-4">
+                        <div class="card-header bg-light">
+                            <h5 class="mb-0">Receipt</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <p><strong>Transaction ID:</strong> {{ transaction.id }}</p>
+                                    <p><strong>Date:</strong> {{ transaction.date.strftime('%Y-%m-%d %H:%M:%S') }}</p>
+                                    <p><strong>Cashier:</strong> {{ transaction.user.username }}</p>
+                                </div>
+                                <div class="col-md-6 text-md-end">
+                                    <p><strong>Payment Method:</strong> {{ payment_method.title() }}</p>
+                                    {% if payment_method == 'cash' %}
+                                    <p><strong>Amount Tendered:</strong> ${{ "%.2f"|format(amount_tendered) }}</p>
+                                    <p><strong>Change:</strong> ${{ "%.2f"|format(change) }}</p>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            
+                            <div class="table-responsive">
+                                <table class="table table-striped">
+                                    <thead>
+                                        <tr>
+                                            <th>Product</th>
+                                            <th>Price</th>
+                                            <th>Quantity</th>
+                                            <th>Subtotal</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for item in transaction.items %}
+                                        <tr>
+                                            <td>
+                                                {% if item.is_custom_product %}
+                                                    {{ item.custom_name }}
+                                                    <span class="badge bg-info">Custom</span>
+                                                {% else %}
+                                                    {{ item.product.name }}
+                                                {% endif %}
+                                            </td>
+                                            <td>${{ "%.2f"|format(item.price_at_time_of_sale) }}</td>
+                                            <td>{{ item.quantity }}</td>
+                                            <td>${{ "%.2f"|format(item.price_at_time_of_sale * item.quantity) }}</td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                    <tfoot>
+                                        {% if transaction.discount_amount > 0 %}
+                                        <tr>
+                                            <td colspan="3" class="text-end">Subtotal:</td>
+                                            <td>${{ "%.2f"|format(transaction.total_amount + transaction.discount_amount) }}</td>
+                                        </tr>
+                                        <tr>
+                                            <td colspan="3" class="text-end">Discount:</td>
+                                            <td>-${{ "%.2f"|format(transaction.discount_amount) }}</td>
+                                        </tr>
+                                        {% endif %}
+                                        <tr>
+                                            <th colspan="3" class="text-end">Total:</th>
+                                            <th>${{ "%.2f"|format(transaction.total_amount) }}</th>
+                                        </tr>
+                                    </tfoot>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="d-flex justify-content-between">
+                        <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">
+                            <i class="bi bi-house me-1"></i> Back to Dashboard
+                        </a>
+                        <a href="{{ url_for('new_transaction') }}" class="btn btn-primary">
+                            <i class="bi bi-cart-plus me-1"></i> New Transaction
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

@@ -1,0 +1,331 @@
+{% extends 'base.html' %}
+
+{% block title %}New Transaction - Convenience Store POS{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <h1 class="mb-4">New Transaction</h1>
+    
+    <div class="row mb-3">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Quick Actions</h5>
+                    {% if current_user.role == 'manager' %}
+                    <a href="{{ url_for('manage_quick_access') }}" class="btn btn-sm btn-light">
+                        <i class="bi bi-gear"></i> Manage Quick Access
+                    </a>
+                    {% endif %}
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <form method="get" action="{{ url_for('search_products') }}" class="mb-2">
+                                <div class="input-group">
+                                    <input type="text" name="search_term" class="form-control" placeholder="Search products by name, SKU, barcode or category" id="productSearch">
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="bi bi-search me-1"></i> Search
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                        <div class="col-md-6 d-flex justify-content-end">
+                            <a href="{{ url_for('add_custom_product') }}" class="btn btn-info me-2">
+                                <i class="bi bi-plus-circle me-1"></i> Custom Product
+                            </a>
+                            <a href="{{ url_for('quick_add') }}" class="btn btn-success me-2">
+                                <i class="bi bi-upc-scan me-1"></i> Quick Add / Scan
+                            </a>
+                            <a href="{{ url_for('confirm_clear_cart') }}" class="btn btn-warning">
+                                <i class="bi bi-trash me-1"></i> Clear Cart
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row">
+        <div class="col-md-5">
+            <!-- Quick Access Product Grid -->
+            <div class="card mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">Quick Access Products</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-2">
+                        {% for item in quick_access_products %}
+                            <div class="col-md-6 col-lg-4">
+                                {% if item.product %}
+                                    <form action="{{ url_for('add_to_cart_from_quick_access', product_id=item.product.id) }}" method="post">
+                                        <button type="submit" class="btn btn-outline-primary w-100 h-100 product-button">
+                                            <div class="d-flex flex-column align-items-center">
+                                                <span class="product-name">{{ item.product.name }}</span>
+                                                <span class="product-price">${{ "%.2f"|format(item.product.price) }}</span>
+                                                <span class="product-stock">({{ item.product.quantity }} in stock)</span>
+                                            </div>
+                                        </button>
+                                    </form>
+                                {% else %}
+                                    <div class="btn btn-outline-secondary w-100 h-100 product-button disabled">
+                                        <div class="d-flex flex-column align-items-center">
+                                            <span class="product-name">Position {{ item.position }}</span>
+                                            <span class="product-price">Not Set</span>
+                                        </div>
+                                    </div>
+                                {% endif %}
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Standard Add Product Form -->
+            <div class="card mb-4">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0">Add Product</h5>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        {{ form.csrf_token }}
+                        <div class="mb-3">
+                            <label for="product_id" class="form-label">{{ form.product_id.label }}</label>
+                            {{ form.product_id(class="form-select product-select", id="product_id") }}
+                            {% if form.product_id.errors %}
+                                <div class="text-danger">
+                                    {% for error in form.product_id.errors %}
+                                        {{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                        <div class="mb-3">
+                            <label for="quantity" class="form-label">{{ form.quantity.label }}</label>
+                            <div class="input-group">
+                                <button type="button" class="btn btn-outline-secondary" id="decreaseQty">-</button>
+                                {{ form.quantity(class="form-control text-center", id="quantity", value="1") }}
+                                <button type="button" class="btn btn-outline-secondary" id="increaseQty">+</button>
+                            </div>
+                            {% if form.quantity.errors %}
+                                <div class="text-danger">
+                                    {% for error in form.quantity.errors %}
+                                        {{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                        <div class="mb-3">
+                            <label for="custom_price" class="form-label">{{ form.custom_price.label }}</label>
+                            <div class="input-group">
+                                <span class="input-group-text">$</span>
+                                {{ form.custom_price(class="form-control", id="custom_price", placeholder="Leave empty for standard price") }}
+                            </div>
+                            {% if form.custom_price.errors %}
+                                <div class="text-danger">
+                                    {% for error in form.custom_price.errors %}
+                                        {{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                            <div class="form-text">Enter a custom price to override the standard price for this transaction only.</div>
+                        </div>
+                        <div class="d-grid">
+                            {{ form.submit(class="btn btn-primary btn-lg") }}
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-7">
+            <div class="card">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0">Cart</h5>
+                </div>
+                <div class="card-body">
+                    {% if cart %}
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Product</th>
+                                    <th>Price</th>
+                                    <th>Quantity</th>
+                                    <th>Subtotal</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in cart %}
+                                <tr>
+                                    <td>
+                                        {{ item.name }}
+                                        {% if item.is_custom_product %}
+                                            <span class="badge bg-info">Custom</span>
+                                        {% elif item.is_custom_price %}
+                                            <span class="badge bg-warning">Custom Price</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>${{ "%.2f"|format(item.price) }}</td>
+                                    <td>
+                                        <form action="{{ url_for('update_quantity', product_id=item.product_id) }}" method="post" class="d-flex align-items-center">
+                                            <input type="number" name="quantity" value="{{ item.quantity }}" class="form-control form-control-sm" style="width: 60px;">
+                                            <button type="submit" class="btn btn-sm btn-outline-primary ms-2">
+                                                <i class="bi bi-arrow-repeat"></i>
+                                            </button>
+                                        </form>
+                                    </td>
+                                    <td>${{ "%.2f"|format(item.price * item.quantity) }}</td>
+                                    <td>
+                                        <form action="{{ url_for('remove_from_cart', product_id=item.product_id) }}" method="post">
+                                            <button type="submit" class="btn btn-sm btn-danger">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </form>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                            <tfoot>
+                                <tr>
+                                    <th colspan="3" class="text-end">Total:</th>
+                                    <th>${{ "%.2f"|format(total) }}</th>
+                                    <th></th>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                    
+                    <div class="d-flex justify-content-end mt-3">
+                        <a href="{{ url_for('checkout') }}" class="btn btn-success btn-lg">
+                            <i class="bi bi-credit-card me-1"></i> Proceed to Checkout
+                        </a>
+                    </div>
+                    {% elif last_transaction %}
+                    <!-- Previous Transaction History -->
+                    <div class="history-section" style="background-color: #f0f0f0; padding: 15px; border-radius: 5px;">
+                        <h5 class="mb-3 text-secondary"><i class="bi bi-clock-history me-2"></i>Previous Transaction History</h5>
+                        <div class="table-responsive">
+                            <table class="table table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>Product</th>
+                                        <th>Price</th>
+                                        <th>Quantity</th>
+                                        <th>Subtotal</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for item in last_transaction.items %}
+                                    <tr>
+                                        <td>
+                                            {% if item.is_custom_product %}
+                                                {{ item.custom_name }}
+                                                <span class="badge bg-info">Custom</span>
+                                            {% else %}
+                                                {{ item.product.name }}
+                                            {% endif %}
+                                        </td>
+                                        <td>${{ "%.2f"|format(item.price_at_time_of_sale) }}</td>
+                                        <td>{{ item.quantity }}</td>
+                                        <td>${{ "%.2f"|format(item.price_at_time_of_sale * item.quantity) }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                                <tfoot>
+                                    <tr>
+                                        <th colspan="3" class="text-end">Total:</th>
+                                        <th>${{ "%.2f"|format(last_transaction.total_amount) }}</th>
+                                    </tr>
+                                    {% if last_transaction.discount_amount > 0 %}
+                                    <tr>
+                                        <td colspan="3" class="text-end">Discount:</td>
+                                        <td>${{ "%.2f"|format(last_transaction.discount_amount) }}</td>
+                                    </tr>
+                                    {% endif %}
+                                </tfoot>
+                            </table>
+                        </div>
+                        <div class="text-muted small">
+                            Transaction #{{ last_transaction.id }} - {{ last_transaction.date.strftime('%Y-%m-%d %H:%M') }} - 
+                            Payment: {{ last_transaction.payment_method }}
+                        </div>
+                    </div>
+                    {% else %}
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle me-2"></i> Cart is empty. Add products to begin a transaction.
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .product-button {
+        min-height: 100px;
+        margin-bottom: 10px;
+        padding: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+    }
+    
+    .product-name {
+        font-weight: bold;
+        font-size: 0.9rem;
+        margin-bottom: 5px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 100%;
+    }
+    
+    .product-price {
+        font-size: 1rem;
+        color: #28a745;
+    }
+    
+    .product-stock {
+        font-size: 0.8rem;
+        color: #6c757d;
+    }
+    
+    .history-section {
+        opacity: 0.9;
+        transition: all 0.3s ease;
+    }
+    
+    .history-section:hover {
+        opacity: 1;
+    }
+</style>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Quantity increment/decrement
+        document.getElementById('increaseQty').addEventListener('click', function() {
+            let qtyInput = document.getElementById('quantity');
+            qtyInput.value = parseInt(qtyInput.value) + 1;
+        });
+        
+        document.getElementById('decreaseQty').addEventListener('click', function() {
+            let qtyInput = document.getElementById('quantity');
+            let currentValue = parseInt(qtyInput.value);
+            if (currentValue > 1) {
+                qtyInput.value = currentValue - 1;
+            }
+        });
+        
+        // Initialize product select with search
+        $('.product-select').select2({
+            theme: 'bootstrap-5',
+            placeholder: 'Select a product',
+            width: '100%'
+        });
+    });
+</script>
+{% endblock %} 

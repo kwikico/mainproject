@@ -1,0 +1,41 @@
+{% extends 'base.html' %}
+
+{% block title %}Returns - Convenience Store POS{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <h1 class="mb-4">Process Return</h1>
+    
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card shadow">
+                <div class="card-header bg-secondary text-white">
+                    <h4 class="mb-0">Find Transaction</h4>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        {{ form.csrf_token }}
+                        <div class="mb-3">
+                            <label for="transaction_id" class="form-label">{{ form.transaction_id.label }}</label>
+                            {{ form.transaction_id(class="form-control", id="transaction_id", placeholder="Enter transaction ID") }}
+                            {% if form.transaction_id.errors %}
+                                <div class="text-danger">
+                                    {% for error in form.transaction_id.errors %}
+                                        {{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                            <div class="form-text">
+                                Enter the transaction ID from the receipt to process a return.
+                            </div>
+                        </div>
+                        <div class="d-grid">
+                            {{ form.submit(class="btn btn-primary") }}
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

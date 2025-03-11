@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Convenience Store POS{% endblock %}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" />
+    <style>
+        body {
+            padding-top: 56px;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        .content {
+            flex: 1;
+        }
+        .sidebar {
+            min-height: calc(100vh - 56px);
+            background-color: #f8f9fa;
+            border-right: 1px solid #dee2e6;
+        }
+        .nav-link {
+            color: #495057;
+        }
+        .nav-link:hover {
+            background-color: #e9ecef;
+        }
+        .nav-link.active {
+            background-color: #0d6efd;
+            color: white;
+        }
+        .footer {
+            background-color: #f8f9fa;
+            padding: 1rem 0;
+            border-top: 1px solid #dee2e6;
+        }
+        .btn-lg {
+            font-size: 1.2rem;
+            padding: 0.75rem 1.5rem;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark fixed-top">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="{{ url_for('index') }}">Convenience Store POS</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    {% if current_user.is_authenticated %}
+                    <li class="nav-item">
+                        <span class="nav-link">Welcome, {{ current_user.username }} ({{ current_user.role }})</span>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('logout') }}">Logout</a>
+                    </li>
+                    {% else %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('login') }}">Login</a>
+                    </li>
+                    {% endif %}
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container-fluid">
+        <div class="row">
+            {% if current_user.is_authenticated %}
+            <div class="col-md-2 sidebar p-0">
+                <div class="list-group list-group-flush pt-3">
+                    <a href="{{ url_for('dashboard') }}" class="list-group-item list-group-item-action {% if request.path == url_for('dashboard') %}active{% endif %}">
+                        <i class="bi bi-speedometer2 me-2"></i> Dashboard
+                    </a>
+                    <a href="{{ url_for('new_transaction') }}" class="list-group-item list-group-item-action {% if request.path == url_for('new_transaction') %}active{% endif %}">
+                        <i class="bi bi-cart-plus me-2"></i> New Transaction
+                    </a>
+                    <a href="{{ url_for('quick_add') }}" class="list-group-item list-group-item-action {% if request.path == url_for('quick_add') %}active{% endif %}">
+                        <i class="bi bi-upc-scan me-2"></i> Quick Add / Scan
+                    </a>
+                    <a href="{{ url_for('search_products') }}" class="list-group-item list-group-item-action {% if request.path == url_for('search_products') %}active{% endif %}">
+                        <i class="bi bi-search me-2"></i> Product Search
+                    </a>
+                    <a href="{{ url_for('returns') }}" class="list-group-item list-group-item-action {% if request.path == url_for('returns') %}active{% endif %}">
+                        <i class="bi bi-arrow-return-left me-2"></i> Returns
+                    </a>
+                    {% if current_user.role == 'manager' %}
+                    <a href="{{ url_for('products') }}" class="list-group-item list-group-item-action {% if request.path == url_for('products') %}active{% endif %}">
+                        <i class="bi bi-box-seam me-2"></i> Products
+                    </a>
+                    <a href="{{ url_for('manage_quick_access') }}" class="list-group-item list-group-item-action {% if request.path == url_for('manage_quick_access') %}active{% endif %}">
+                        <i class="bi bi-grid me-2"></i> Quick Access Products
+                    </a>
+                    <a href="{{ url_for('reports') }}" class="list-group-item list-group-item-action {% if request.path == url_for('reports') %}active{% endif %}">
+                        <i class="bi bi-graph-up me-2"></i> Reports
+                    </a>
+                    <a href="{{ url_for('users') }}" class="list-group-item list-group-item-action {% if request.path == url_for('users') %}active{% endif %}">
+                        <i class="bi bi-people me-2"></i> Users
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="col-md-10 content py-3">
+            {% else %}
+            <div class="col-12 content py-3">
+            {% endif %}
+                <!-- Flash messages -->
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                        {% for category, message in messages %}
+                            <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                                {{ message }}
+                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+                {% endwith %}
+
+                <!-- Page content -->
+                {% block content %}{% endblock %}
+            </div>
+        </div>
+    </div>
+
+    <footer class="footer text-center">
+        <div class="container">
+            <span class="text-muted">© 2023 Convenience Store POS System</span>
+        </div>
+    </footer>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    {% block scripts %}{% endblock %}
+</body>
+</html> 

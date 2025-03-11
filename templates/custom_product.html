@@ -1,0 +1,106 @@
+{% extends 'base.html' %}
+
+{% block title %}Add Custom Product - Convenience Store POS{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <h1 class="mb-4">Add Custom Product</h1>
+    
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">Manual Product Entry</h5>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        {{ form.csrf_token }}
+                        <div class="mb-3">
+                            <label for="name" class="form-label">{{ form.name.label }}</label>
+                            {{ form.name(class="form-control", id="name") }}
+                            {% if form.name.errors %}
+                                <div class="text-danger">
+                                    {% for error in form.name.errors %}
+                                        {{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                        <div class="mb-3">
+                            <label for="price" class="form-label">{{ form.price.label }}</label>
+                            {{ form.price(class="form-control", id="price") }}
+                            {% if form.price.errors %}
+                                <div class="text-danger">
+                                    {% for error in form.price.errors %}
+                                        {{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                        <div class="mb-3">
+                            <label for="quantity" class="form-label">{{ form.quantity.label }}</label>
+                            <div class="input-group">
+                                <button type="button" class="btn btn-outline-secondary" id="decreaseQty">-</button>
+                                {{ form.quantity(class="form-control text-center", id="quantity") }}
+                                <button type="button" class="btn btn-outline-secondary" id="increaseQty">+</button>
+                            </div>
+                            {% if form.quantity.errors %}
+                                <div class="text-danger">
+                                    {% for error in form.quantity.errors %}
+                                        {{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                        <div class="d-grid">
+                            {{ form.submit(class="btn btn-primary btn-lg") }}
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0">Instructions</h5>
+                </div>
+                <div class="card-body">
+                    <p>Use this form to add a custom product directly to the cart without adding it to your inventory.</p>
+                    <p>This is useful for:</p>
+                    <ul>
+                        <li>One-time sales of items not in your inventory</li>
+                        <li>Special services or charges</li>
+                        <li>Custom-priced items</li>
+                    </ul>
+                    <p>The product will be added to the current transaction but will not affect your inventory records.</p>
+                    
+                    <div class="d-grid mt-4">
+                        <a href="{{ url_for('new_transaction') }}" class="btn btn-secondary">
+                            <i class="bi bi-arrow-left me-1"></i> Back to Transaction
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Quantity increment/decrement
+        document.getElementById('increaseQty').addEventListener('click', function() {
+            let qtyInput = document.getElementById('quantity');
+            qtyInput.value = parseInt(qtyInput.value) + 1;
+        });
+        
+        document.getElementById('decreaseQty').addEventListener('click', function() {
+            let qtyInput = document.getElementById('quantity');
+            let currentValue = parseInt(qtyInput.value);
+            if (currentValue > 1) {
+                qtyInput.value = currentValue - 1;
+            }
+        });
+    });
+</script>
+{% endblock %} 

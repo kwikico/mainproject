@@ -1,0 +1,227 @@
+{% extends 'base.html' %}
+
+{% block title %}Checkout - Convenience Store POS{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <h1 class="mb-4">Checkout</h1>
+    
+    <div class="row">
+        <div class="col-md-7">
+            <div class="card mb-4">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0">Cart Summary</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Product</th>
+                                    <th>Price</th>
+                                    <th>Quantity</th>
+                                    <th>Subtotal</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in cart %}
+                                <tr>
+                                    <td>
+                                        {{ item.name }}
+                                        {% if item.is_custom_product %}
+                                            <span class="badge bg-info">Custom</span>
+                                        {% elif item.is_custom_price %}
+                                            <span class="badge bg-warning">Custom Price</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>${{ "%.2f"|format(item.price) }}</td>
+                                    <td>{{ item.quantity }}</td>
+                                    <td>${{ "%.2f"|format(item.price * item.quantity) }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                            <tfoot>
+                                <tr>
+                                    <th colspan="3" class="text-end">Subtotal:</th>
+                                    <th>${{ "%.2f"|format(subtotal) }}</th>
+                                </tr>
+                                <tr id="discount-row" style="display: none;">
+                                    <td colspan="3" class="text-end">Discount:</td>
+                                    <td id="discount-display">$0.00</td>
+                                </tr>
+                                <tr>
+                                    <th colspan="3" class="text-end">Total:</th>
+                                    <th id="total-display">${{ "%.2f"|format(total) }}</th>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-5">
+            <div class="card">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">Payment</h5>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        {{ form.csrf_token }}
+                        <div class="mb-3">
+                            <label for="payment_method" class="form-label">{{ form.payment_method.label }}</label>
+                            {{ form.payment_method(class="form-select", id="payment_method") }}
+                            {% if form.payment_method.errors %}
+                                <div class="text-danger">
+                                    {% for error in form.payment_method.errors %}
+                                        {{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                            <div class="form-text" id="card-info" style="display: none;">
+                                <i class="bi bi-info-circle"></i> Card selection is for record-keeping only. No payment processing will occur.
+                            </div>
+                        </div>
+                        
+                        <div id="cash-fields">
+                            <div class="mb-3">
+                                <label for="amount_tendered" class="form-label">{{ form.amount_tendered.label }}</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">$</span>
+                                    {{ form.amount_tendered(class="form-control", id="amount_tendered") }}
+                                </div>
+                                {% if form.amount_tendered.errors %}
+                                    <div class="text-danger">
+                                        {% for error in form.amount_tendered.errors %}
+                                            {{ error }}
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label>Quick Amount</label>
+                                <div class="d-flex flex-wrap gap-2">
+                                    <button type="button" class="btn btn-outline-primary quick-amount" data-amount="{{ total }}">Exact</button>
+                                    <button type="button" class="btn btn-outline-primary quick-amount" data-amount="{{ total + 5 }}">+$5</button>
+                                    <button type="button" class="btn btn-outline-primary quick-amount" data-amount="{{ total + 10 }}">+$10</button>
+                                    <button type="button" class="btn btn-outline-primary quick-amount" data-amount="{{ total + 20 }}">+$20</button>
+                                </div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label>Change Due:</label>
+                                <h3 id="change-display" class="text-success">$0.00</h3>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="discount_amount" class="form-label">{{ form.discount_amount.label }}</label>
+                            <div class="input-group">
+                                <span class="input-group-text">$</span>
+                                {{ form.discount_amount(class="form-control", id="discount_amount", value="0.00") }}
+                            </div>
+                            {% if form.discount_amount.errors %}
+                                <div class="text-danger">
+                                    {% for error in form.discount_amount.errors %}
+                                        {{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="d-flex justify-content-between">
+                            <a href="{{ url_for('new_transaction') }}" class="btn btn-secondary">
+                                <i class="bi bi-arrow-left me-1"></i> Back to Cart
+                            </a>
+                            {{ form.submit(class="btn btn-success") }}
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const paymentMethod = document.getElementById('payment_method');
+        const cashFields = document.getElementById('cash-fields');
+        const amountTendered = document.getElementById('amount_tendered');
+        const cardInfo = document.getElementById('card-info');
+        const subtotalAmount = {{ subtotal }};
+        let totalAmount = {{ total }};
+        
+        // Set initial amount tendered to match total
+        amountTendered.value = totalAmount.toFixed(2);
+        
+        // Update cash fields visibility based on payment method
+        paymentMethod.addEventListener('change', function() {
+            if (this.value === 'cash') {
+                cashFields.style.display = 'block';
+                cardInfo.style.display = 'none';
+            } else {
+                cashFields.style.display = 'none';
+                cardInfo.style.display = 'block';
+            }
+        });
+        
+        // Trigger the change event to set initial state
+        paymentMethod.dispatchEvent(new Event('change'));
+        
+        // Update amount tendered when discount changes
+        const discountAmount = document.getElementById('discount_amount');
+        const discountRow = document.getElementById('discount-row');
+        const discountDisplay = document.getElementById('discount-display');
+        const totalDisplay = document.getElementById('total-display');
+        
+        discountAmount.addEventListener('input', function() {
+            const discount = parseFloat(this.value) || 0;
+            totalAmount = Math.max(subtotalAmount - discount, 0);
+            
+            // Update displays
+            if (discount > 0) {
+                discountRow.style.display = 'table-row';
+                discountDisplay.textContent = '$' + discount.toFixed(2);
+            } else {
+                discountRow.style.display = 'none';
+            }
+            
+            totalDisplay.textContent = '$' + totalAmount.toFixed(2);
+            
+            // Update quick amount buttons
+            document.querySelectorAll('.quick-amount').forEach(function(button) {
+                if (button.getAttribute('data-amount') === 'exact') {
+                    button.setAttribute('data-amount', totalAmount);
+                }
+            });
+            
+            // Update change calculation
+            calculateChange();
+        });
+        
+        // Quick amount buttons
+        document.querySelectorAll('.quick-amount').forEach(function(button) {
+            button.addEventListener('click', function() {
+                const amount = parseFloat(this.getAttribute('data-amount'));
+                amountTendered.value = amount.toFixed(2);
+                calculateChange();
+            });
+        });
+        
+        // Calculate change when amount tendered changes
+        amountTendered.addEventListener('input', calculateChange);
+        
+        function calculateChange() {
+            const tendered = parseFloat(amountTendered.value) || 0;
+            const change = Math.max(tendered - totalAmount, 0);
+            document.getElementById('change-display').textContent = '$' + change.toFixed(2);
+        }
+        
+        // Initial change calculation
+        calculateChange();
+    });
+</script>
+{% endblock %} 

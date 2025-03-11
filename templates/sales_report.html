@@ -1,0 +1,95 @@
+{% extends 'base.html' %}
+
+{% block title %}Sales Report - Convenience Store POS{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Sales Report</h1>
+        <a href="{{ url_for('reports') }}" class="btn btn-secondary">
+            <i class="bi bi-arrow-left me-1"></i> Back to Reports
+        </a>
+    </div>
+    
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+                    <h5 class="card-title">Total Sales</h5>
+                    <h2 class="display-4">${{ "%.2f"|format(total_sales) }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card bg-success text-white">
+                <div class="card-body">
+                    <h5 class="card-title">Total Transactions</h5>
+                    <h2 class="display-4">{{ transactions|length }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card bg-info text-white">
+                <div class="card-body">
+                    <h5 class="card-title">Average Transaction</h5>
+                    <h2 class="display-4">
+                        {% if transactions|length > 0 %}
+                        ${{ "%.2f"|format(total_sales / transactions|length) }}
+                        {% else %}
+                        $0.00
+                        {% endif %}
+                    </h2>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="card">
+        <div class="card-header bg-light">
+            <h5 class="mb-0">Transaction History</h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-striped table-hover">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Date</th>
+                            <th>Cashier</th>
+                            <th>Items</th>
+                            <th>Payment Method</th>
+                            <th>Discount</th>
+                            <th>Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for transaction in transactions %}
+                        <tr>
+                            <td>{{ transaction.id }}</td>
+                            <td>{{ transaction.date.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                            <td>{{ transaction.user.username }}</td>
+                            <td>{{ transaction.items|length }}</td>
+                            <td>{{ transaction.payment_method.title() }}</td>
+                            <td>
+                                {% if transaction.discount_amount > 0 %}
+                                ${{ "%.2f"|format(transaction.discount_amount) }}
+                                {% else %}
+                                -
+                                {% endif %}
+                            </td>
+                            <td>${{ "%.2f"|format(transaction.total_amount) }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            
+            {% if not transactions %}
+            <div class="alert alert-info">
+                <i class="bi bi-info-circle me-2"></i> No transactions found.
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %} 

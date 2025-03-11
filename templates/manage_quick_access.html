@@ -1,0 +1,135 @@
+{% extends 'base.html' %}
+
+{% block title %}Manage Quick Access Products - Convenience Store POS{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <h1 class="mb-4">Manage Quick Access Products</h1>
+    
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">Current Quick Access Products</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Position</th>
+                                    <th>Product</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in quick_access_products %}
+                                <tr>
+                                    <td>{{ item.position }}</td>
+                                    <td>{{ item.product_name }}</td>
+                                    <td>
+                                        <button type="button" class="btn btn-sm btn-primary edit-quick-access" 
+                                                data-position="{{ item.position }}" 
+                                                data-product-id="{{ item.product_id if item.product_id else '' }}">
+                                            <i class="bi bi-pencil"></i> Edit
+                                        </button>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header bg-secondary text-white">
+                    <h5 class="mb-0">Edit Quick Access Button</h5>
+                </div>
+                <div class="card-body">
+                    <form method="post" action="{{ url_for('update_quick_access') }}">
+                        {{ form.csrf_token }}
+                        {{ form.position(id="position") }}
+                        
+                        <div class="mb-3">
+                            <label for="position_display" class="form-label">Position</label>
+                            <input type="text" id="position_display" class="form-control" readonly>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="product_id" class="form-label">{{ form.product_id.label }}</label>
+                            {{ form.product_id(class="form-select product-select", id="product_id") }}
+                            {% if form.product_id.errors %}
+                                <div class="text-danger">
+                                    {% for error in form.product_id.errors %}
+                                        {{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="d-grid">
+                            {{ form.submit(class="btn btn-primary") }}
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0">Instructions</h5>
+                </div>
+                <div class="card-body">
+                    <p>Use this page to configure the 10 quick access product buttons that appear on the transaction page.</p>
+                    <p>These buttons allow for quick addition of frequently sold products with a single click.</p>
+                    <ul>
+                        <li>Click "Edit" next to a position to select which product should appear in that position.</li>
+                        <li>Choose products that are frequently sold to maximize efficiency.</li>
+                        <li>Products that are out of stock will not appear on the transaction page.</li>
+                    </ul>
+                    <div class="d-grid">
+                        <a href="{{ url_for('new_transaction') }}" class="btn btn-success">
+                            <i class="bi bi-cart-plus"></i> Go to Transaction Page
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Initialize product select with search
+        $('.product-select').select2({
+            theme: 'bootstrap-5',
+            placeholder: 'Select a product',
+            width: '100%'
+        });
+        
+        // Handle edit button clicks
+        document.querySelectorAll('.edit-quick-access').forEach(function(button) {
+            button.addEventListener('click', function() {
+                const position = this.getAttribute('data-position');
+                const productId = this.getAttribute('data-product-id');
+                
+                document.getElementById('position').value = position;
+                document.getElementById('position_display').value = position;
+                
+                // Set the select value
+                const select = document.getElementById('product_id');
+                if (productId) {
+                    select.value = productId;
+                    $(select).trigger('change'); // For Select2
+                }
+            });
+        });
+    });
+</script>
+{% endblock %} 
