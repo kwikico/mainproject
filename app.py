@@ -251,43 +251,10 @@ def create_app(test_config=None):
     @app.route('/transactions/quick_add', methods=['GET', 'POST'])
     @login_required
     def quick_add():
-        form = QuickAddForm()
-        
-        if form.validate_on_submit():
-            product_code = form.product_code.data
-            quantity = form.quantity.data
-            
-            product = Product.query.filter((Product.barcode == product_code) | (Product.sku == product_code)).first()
-            
-            if product:
-                cart = session.get('cart', [])
-                
-                # Check if product already in cart
-                for item in cart:
-                    if item['product_id'] == product.id:
-                        item['quantity'] += quantity
-                        session['cart'] = cart
-                        flash(f'Updated quantity for {product.name}', 'success')
-                        return redirect(url_for('quick_add'))
-                
-                cart.append({
-                    'product_id': product.id,
-                    'name': product.name,
-                    'price': product.price,
-                    'quantity': quantity
-                })
-                session['cart'] = cart
-                flash(f'Added {product.name} to cart', 'success')
-                return redirect(url_for('quick_add'))
-            else:
-                flash('Product not found. Please check the barcode or SKU.', 'danger')
-        
-        cart = session.get('cart', [])
-        total = sum(item['price'] * item['quantity'] for item in cart)
-        
-        return render_template('quick_add.html', form=form, cart=cart, total=total)
+        # Redirect to the new combined product search page
+        return redirect(url_for('search_products'))
 
-    @app.route('/transactions/update_quantity/<int:product_id>', methods=['POST'])
+    @app.route('/update_quantity/<int:product_id>', methods=['POST'])
     @login_required
     def update_quantity(product_id):
         cart = session.get('cart', [])
@@ -317,6 +284,29 @@ def create_app(test_config=None):
         
         session['cart'] = cart
         return redirect(url_for('new_transaction'))
+    
+    @app.route('/update_price/<int:product_id>', methods=['POST'])
+    @login_required
+    def update_price(product_id):
+        new_price = float(request.form.get('price', 0))
+        if new_price < 0:
+            flash('Price cannot be negative', 'danger')
+            return redirect(url_for('new_transaction'))
+        
+        cart = session.get('cart', [])
+        for item in cart:
+            if item['product_id'] == product_id:
+                # Store the original price if this is the first price override
+                if not item.get('is_custom_price', False):
+                    item['original_price'] = item['price']
+                
+                item['price'] = new_price
+                item['is_custom_price'] = True
+                session['cart'] = cart
+                flash('Price updated', 'success')
+                break
+        
+        return redirect(url_for('new_transaction'))
 
     @app.route('/transactions/clear_cart', methods=['GET'])
     @login_required
@@ -334,8 +324,10 @@ def create_app(test_config=None):
     @login_required
     def search_products():
         form = ProductSearchForm()
+        quick_add_form = QuickAddForm()
         products = []
         
+        # Handle product search form submission
         if form.validate_on_submit() or request.args.get('search_term'):
             search_term = form.search_term.data or request.args.get('search_term', '')
             products = Product.query.filter(
@@ -344,8 +336,39 @@ def create_app(test_config=None):
                 (Product.barcode.ilike(f'%{search_term}%')) | 
                 (Product.category.ilike(f'%{search_term}%'))
             ).all()
+        
+        # Handle quick add form submission
+        if quick_add_form.validate_on_submit():
+            product_code = quick_add_form.product_code.data
+            quantity = quick_add_form.quantity.data
             
-        return render_template('product_search.html', form=form, products=products)
+            product = Product.query.filter((Product.barcode == product_code) | (Product.sku == product_code)).first()
+            
+            if product:
+                cart = session.get('cart', [])
+                
+                # Check if product already in cart
+                for item in cart:
+                    if item['product_id'] == product.id:
+                        item['quantity'] += quantity
+                        session['cart'] = cart
+                        flash(f'Updated quantity for {product.name}', 'success')
+                        return redirect(url_for('search_products'))
+                
+                cart.append({
+                    'product_id': product.id,
+                    'name': product.name,
+                    'price': product.price,
+                    'quantity': quantity
+                })
+                session['cart'] = cart
+                flash(f'Added {product.name} to cart', 'success')
+                return redirect(url_for('search_products'))
+        
+        cart = session.get('cart', [])
+        total = sum(item['price'] * item['quantity'] for item in cart)
+            
+        return render_template('product_search.html', form=form, quick_add_form=quick_add_form, products=products, cart=cart, total=total)
 
     @app.route('/api/products/search', methods=['GET'])
     @login_required

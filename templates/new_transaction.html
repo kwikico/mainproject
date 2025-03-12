@@ -4,50 +4,27 @@
 
 {% block content %}
 <div class="container-fluid">
-    <h1 class="mb-4">New Transaction</h1>
-    
-    <div class="row mb-3">
-        <div class="col-md-12">
-            <div class="card">
-                <div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0">Quick Actions</h5>
-                    {% if current_user.role == 'manager' %}
-                    <a href="{{ url_for('manage_quick_access') }}" class="btn btn-sm btn-light">
-                        <i class="bi bi-gear"></i> Manage Quick Access
-                    </a>
-                    {% endif %}
-                </div>
-                <div class="card-body">
-                    <div class="row">
-                        <div class="col-md-6">
-                            <form method="get" action="{{ url_for('search_products') }}" class="mb-2">
-                                <div class="input-group">
-                                    <input type="text" name="search_term" class="form-control" placeholder="Search products by name, SKU, barcode or category" id="productSearch">
-                                    <button type="submit" class="btn btn-primary">
-                                        <i class="bi bi-search me-1"></i> Search
-                                    </button>
-                                </div>
-                            </form>
-                        </div>
-                        <div class="col-md-6 d-flex justify-content-end">
-                            <a href="{{ url_for('add_custom_product') }}" class="btn btn-info me-2">
-                                <i class="bi bi-plus-circle me-1"></i> Custom Product
-                            </a>
-                            <a href="{{ url_for('quick_add') }}" class="btn btn-success me-2">
-                                <i class="bi bi-upc-scan me-1"></i> Quick Add / Scan
-                            </a>
-                            <a href="{{ url_for('confirm_clear_cart') }}" class="btn btn-warning">
-                                <i class="bi bi-trash me-1"></i> Clear Cart
-                            </a>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
+    <!-- Removed "New Transaction" heading as requested -->
     
     <div class="row">
         <div class="col-md-5">
+            <!-- Clock display added at the top -->
+            <div class="card mb-3">
+                <div class="card-body py-2 d-flex justify-content-between align-items-center">
+                    <div class="d-flex align-items-center">
+                        <i class="bi bi-clock me-2 text-primary" style="font-size: 1.5rem;"></i>
+                        <div>
+                            <div id="current-time" class="fw-bold" style="font-size: 1.2rem;"></div>
+                            <div id="current-date" class="small text-muted"></div>
+                        </div>
+                    </div>
+                    <div class="d-flex align-items-center">
+                        <span class="me-2">Order Timer:</span>
+                        <span id="order-timer" class="fw-bold">00:00</span>
+                    </div>
+                </div>
+            </div>
+            
             <!-- Quick Access Product Grid -->
             <div class="card mb-4">
                 <div class="card-header bg-primary text-white">
@@ -81,182 +58,208 @@
                 </div>
             </div>
             
-            <!-- Standard Add Product Form -->
-            <div class="card mb-4">
-                <div class="card-header bg-info text-white">
-                    <h5 class="mb-0">Add Product</h5>
-                </div>
-                <div class="card-body">
-                    <form method="post">
-                        {{ form.csrf_token }}
-                        <div class="mb-3">
-                            <label for="product_id" class="form-label">{{ form.product_id.label }}</label>
-                            {{ form.product_id(class="form-select product-select", id="product_id") }}
-                            {% if form.product_id.errors %}
-                                <div class="text-danger">
-                                    {% for error in form.product_id.errors %}
-                                        {{ error }}
-                                    {% endfor %}
-                                </div>
-                            {% endif %}
-                        </div>
-                        <div class="mb-3">
-                            <label for="quantity" class="form-label">{{ form.quantity.label }}</label>
-                            <div class="input-group">
-                                <button type="button" class="btn btn-outline-secondary" id="decreaseQty">-</button>
-                                {{ form.quantity(class="form-control text-center", id="quantity", value="1") }}
-                                <button type="button" class="btn btn-outline-secondary" id="increaseQty">+</button>
-                            </div>
-                            {% if form.quantity.errors %}
-                                <div class="text-danger">
-                                    {% for error in form.quantity.errors %}
-                                        {{ error }}
-                                    {% endfor %}
-                                </div>
-                            {% endif %}
-                        </div>
-                        <div class="mb-3">
-                            <label for="custom_price" class="form-label">{{ form.custom_price.label }}</label>
-                            <div class="input-group">
-                                <span class="input-group-text">$</span>
-                                {{ form.custom_price(class="form-control", id="custom_price", placeholder="Leave empty for standard price") }}
-                            </div>
-                            {% if form.custom_price.errors %}
-                                <div class="text-danger">
-                                    {% for error in form.custom_price.errors %}
-                                        {{ error }}
-                                    {% endfor %}
-                                </div>
-                            {% endif %}
-                            <div class="form-text">Enter a custom price to override the standard price for this transaction only.</div>
-                        </div>
-                        <div class="d-grid">
-                            {{ form.submit(class="btn btn-primary btn-lg") }}
+            <!-- Quick Actions card removed as it's now integrated with the numpad -->
+            
+        </div>
+        
+        <div class="col-md-7">
+            <!-- Search Bar moved higher up -->
+            <div class="card mb-3 search-card">
+                <div class="card-body py-2">
+                    <form method="get" action="{{ url_for('search_products') }}">
+                        <div class="input-group">
+                            <input type="text" name="search_term" class="form-control" placeholder="Search products by name, SKU, barcode or category" id="productSearch">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-search me-1"></i> Search
+                            </button>
                         </div>
                     </form>
                 </div>
             </div>
-        </div>
-        
-        <div class="col-md-7">
+            
+            <!-- New Cart UI Layout -->
             <div class="card">
-                <div class="card-header bg-info text-white">
+                <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
                     <h5 class="mb-0">Cart</h5>
+                    <!-- Cart info moved to header in minimalistic way -->
+                    <div class="d-flex align-items-center">
+                        <span class="me-3"><small>Type:</small> <strong>Regular</strong></span>
+                        <span class="me-3"><small>Items:</small> <strong>{{ cart|length if cart else 0 }}</strong></span>
+                        <span><small>Total:</small> <strong id="cart-total">${{ "%.2f"|format(total) if cart else "0.00" }}</strong></span>
+                    </div>
                 </div>
-                <div class="card-body">
-                    {% if cart %}
-                    <div class="table-responsive">
-                        <table class="table table-striped">
-                            <thead>
-                                <tr>
-                                    <th>Product</th>
-                                    <th>Price</th>
-                                    <th>Quantity</th>
-                                    <th>Subtotal</th>
-                                    <th>Action</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for item in cart %}
-                                <tr>
-                                    <td>
-                                        {{ item.name }}
-                                        {% if item.is_custom_product %}
-                                            <span class="badge bg-info">Custom</span>
-                                        {% elif item.is_custom_price %}
-                                            <span class="badge bg-warning">Custom Price</span>
-                                        {% endif %}
-                                    </td>
-                                    <td>${{ "%.2f"|format(item.price) }}</td>
-                                    <td>
-                                        <form action="{{ url_for('update_quantity', product_id=item.product_id) }}" method="post" class="d-flex align-items-center">
-                                            <input type="number" name="quantity" value="{{ item.quantity }}" class="form-control form-control-sm" style="width: 60px;">
-                                            <button type="submit" class="btn btn-sm btn-outline-primary ms-2">
-                                                <i class="bi bi-arrow-repeat"></i>
-                                            </button>
-                                        </form>
-                                    </td>
-                                    <td>${{ "%.2f"|format(item.price * item.quantity) }}</td>
-                                    <td>
-                                        <form action="{{ url_for('remove_from_cart', product_id=item.product_id) }}" method="post">
-                                            <button type="submit" class="btn btn-sm btn-danger">
-                                                <i class="bi bi-trash"></i>
-                                            </button>
-                                        </form>
-                                    </td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                            <tfoot>
-                                <tr>
-                                    <th colspan="3" class="text-end">Total:</th>
-                                    <th>${{ "%.2f"|format(total) }}</th>
-                                    <th></th>
-                                </tr>
-                            </tfoot>
-                        </table>
-                    </div>
-                    
-                    <div class="d-flex justify-content-end mt-3">
-                        <a href="{{ url_for('checkout') }}" class="btn btn-success btn-lg">
-                            <i class="bi bi-credit-card me-1"></i> Proceed to Checkout
-                        </a>
-                    </div>
-                    {% elif last_transaction %}
-                    <!-- Previous Transaction History -->
-                    <div class="history-section" style="background-color: #f0f0f0; padding: 15px; border-radius: 5px;">
-                        <h5 class="mb-3 text-secondary"><i class="bi bi-clock-history me-2"></i>Previous Transaction History</h5>
+                <div class="card-body p-0">
+                    <!-- Cart Items Display Area -->
+                    <div class="cart-items-container">
+                        {% if cart %}
                         <div class="table-responsive">
-                            <table class="table table-striped">
+                            <table class="table table-striped mb-0">
                                 <thead>
                                     <tr>
                                         <th>Product</th>
                                         <th>Price</th>
                                         <th>Quantity</th>
                                         <th>Subtotal</th>
+                                        <th>Action</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {% for item in last_transaction.items %}
-                                    <tr>
+                                    {% for item in cart %}
+                                    <tr class="cart-item" data-product-id="{{ item.product_id }}" data-original-price="{{ item.price }}">
                                         <td>
+                                            {{ item.name }}
                                             {% if item.is_custom_product %}
-                                                {{ item.custom_name }}
                                                 <span class="badge bg-info">Custom</span>
-                                            {% else %}
-                                                {{ item.product.name }}
+                                            {% elif item.is_custom_price %}
+                                                <span class="badge bg-warning">Custom Price</span>
                                             {% endif %}
                                         </td>
-                                        <td>${{ "%.2f"|format(item.price_at_time_of_sale) }}</td>
-                                        <td>{{ item.quantity }}</td>
-                                        <td>${{ "%.2f"|format(item.price_at_time_of_sale * item.quantity) }}</td>
+                                        <td class="price-cell" data-field="price" data-product-id="{{ item.product_id }}" data-original-price="{{ item.price }}">
+                                            <span class="current-price">${{ "%.2f"|format(item.price) }}</span>
+                                            {% if item.is_custom_price %}
+                                            <div class="small text-muted original-price">Original: ${{ item.original_price if item.original_price else item.price }}</div>
+                                            {% endif %}
+                                        </td>
+                                        <td class="quantity-cell" data-field="quantity" data-product-id="{{ item.product_id }}" data-original-quantity="{{ item.quantity }}">
+                                            <span class="current-quantity">{{ item.quantity }}</span>
+                                            <form action="{{ url_for('update_quantity', product_id=item.product_id) }}" method="post" class="d-flex align-items-center quantity-form" style="display: none !important;">
+                                                <input type="number" name="quantity" value="{{ item.quantity }}" class="form-control form-control-sm quantity-input" style="width: 60px;">
+                                                <button type="submit" class="btn btn-sm btn-outline-primary ms-2">
+                                                    <i class="bi bi-arrow-repeat"></i>
+                                                </button>
+                                            </form>
+                                        </td>
+                                        <td>${{ "%.2f"|format(item.price * item.quantity) }}</td>
+                                        <td>
+                                            <form action="{{ url_for('remove_from_cart', product_id=item.product_id) }}" method="post">
+                                                <button type="submit" class="btn btn-sm btn-danger">
+                                                    <i class="bi bi-trash"></i>
+                                                </button>
+                                            </form>
+                                        </td>
                                     </tr>
                                     {% endfor %}
                                 </tbody>
-                                <tfoot>
-                                    <tr>
-                                        <th colspan="3" class="text-end">Total:</th>
-                                        <th>${{ "%.2f"|format(last_transaction.total_amount) }}</th>
-                                    </tr>
-                                    {% if last_transaction.discount_amount > 0 %}
-                                    <tr>
-                                        <td colspan="3" class="text-end">Discount:</td>
-                                        <td>${{ "%.2f"|format(last_transaction.discount_amount) }}</td>
-                                    </tr>
-                                    {% endif %}
-                                </tfoot>
                             </table>
                         </div>
-                        <div class="text-muted small">
-                            Transaction #{{ last_transaction.id }} - {{ last_transaction.date.strftime('%Y-%m-%d %H:%M') }} - 
-                            Payment: {{ last_transaction.payment_method }}
+                        {% elif last_transaction %}
+                        <!-- Previous Transaction History -->
+                        <div class="history-section" style="background-color: #f0f0f0; padding: 15px; border-radius: 5px;">
+                            <h5 class="mb-3 text-secondary"><i class="bi bi-clock-history me-2"></i>Previous Transaction History</h5>
+                            <div class="table-responsive">
+                                <table class="table table-striped">
+                                    <thead>
+                                        <tr>
+                                            <th>Product</th>
+                                            <th>Price</th>
+                                            <th>Quantity</th>
+                                            <th>Subtotal</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for item in last_transaction.items %}
+                                        <tr>
+                                            <td>
+                                                {% if item.is_custom_product %}
+                                                    {{ item.custom_name }}
+                                                    <span class="badge bg-info">Custom</span>
+                                                {% else %}
+                                                    {{ item.product.name }}
+                                                {% endif %}
+                                            </td>
+                                            <td>${{ "%.2f"|format(item.price_at_time_of_sale) }}</td>
+                                            <td>{{ item.quantity }}</td>
+                                            <td>${{ "%.2f"|format(item.price_at_time_of_sale * item.quantity) }}</td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                    <tfoot>
+                                        <tr>
+                                            <th colspan="3" class="text-end">Total:</th>
+                                            <th>${{ "%.2f"|format(last_transaction.total_amount) }}</th>
+                                        </tr>
+                                        {% if last_transaction.discount_amount > 0 %}
+                                        <tr>
+                                            <td colspan="3" class="text-end">Discount:</td>
+                                            <td>${{ "%.2f"|format(last_transaction.discount_amount) }}</td>
+                                        </tr>
+                                        {% endif %}
+                                    </tfoot>
+                                </table>
+                            </div>
+                            <div class="text-muted small">
+                                Transaction #{{ last_transaction.id }} - {{ last_transaction.date.strftime('%Y-%m-%d %H:%M') }} - 
+                                Payment: {{ last_transaction.payment_method }}
+                            </div>
+                        </div>
+                        {% else %}
+                        <div class="alert alert-info m-3">
+                            <i class="bi bi-info-circle me-2"></i> Cart is empty. Add products to begin a transaction.
+                        </div>
+                        {% endif %}
+                    </div>
+                    
+                    <!-- Bottom Control Bar -->
+                    <div class="cart-control-bar">
+                        <!-- Quick Actions moved to left of numpad -->
+                        <div class="quick-actions">
+                            <div class="d-flex flex-column">
+                                <a href="{{ url_for('add_custom_product') }}" class="action-btn custom-product-btn mb-2">
+                                    <i class="bi bi-plus-circle me-1"></i> Custom Product
+                                </a>
+                                <a href="{{ url_for('quick_add') }}" class="action-btn quick-add-btn mb-2">
+                                    <i class="bi bi-upc-scan me-1"></i> Quick Add / Scan
+                                </a>
+                                {% if current_user.role == 'manager' %}
+                                <a href="{{ url_for('manage_quick_access') }}" class="action-btn manage-access-btn">
+                                    <i class="bi bi-gear me-1"></i> Manage Quick Access
+                                </a>
+                                {% endif %}
+                            </div>
+                        </div>
+                        
+                        <div class="numeric-keypad">
+                            <div id="keypad-title" class="text-center mb-1 fw-bold">Numpad</div>
+                            <div class="keypad-row">
+                                <button class="keypad-btn" data-value="7">7</button>
+                                <button class="keypad-btn" data-value="8">8</button>
+                                <button class="keypad-btn" data-value="9">9</button>
+                            </div>
+                            <div class="keypad-row">
+                                <button class="keypad-btn" data-value="4">4</button>
+                                <button class="keypad-btn" data-value="5">5</button>
+                                <button class="keypad-btn" data-value="6">6</button>
+                            </div>
+                            <div class="keypad-row">
+                                <button class="keypad-btn" data-value="1">1</button>
+                                <button class="keypad-btn" data-value="2">2</button>
+                                <button class="keypad-btn" data-value="3">3</button>
+                            </div>
+                            <div class="keypad-row">
+                                <button class="keypad-btn" data-value="0">0</button>
+                                <button class="keypad-btn" data-value=".">.</button>
+                                <button class="keypad-btn" data-value="00">00</button>
+                            </div>
+                        </div>
+                        
+                        <div class="control-buttons">
+                            {% if cart %}
+                            <a href="{{ url_for('checkout') }}" class="control-btn checkout-btn mb-3">
+                                CHECKOUT
+                            </a>
+                            {% else %}
+                            <button class="control-btn checkout-btn mb-3" disabled>CHECKOUT</button>
+                            {% endif %}
+                            
+                            <a href="{{ url_for('confirm_clear_cart') }}" class="control-btn clear-cart-btn mb-3">
+                                <i class="bi bi-trash me-1"></i> CLEAR CART
+                            </a>
+                            
+                            <button class="control-btn clear-btn mb-2" id="clear-btn">CLEAR</button>
+                            <button class="control-btn confirm-btn mb-2" id="confirm-btn" style="display: none;">CONFIRM</button>
+                            <button class="control-btn repeat-btn" id="repeat-btn">REPEAT</button>
                         </div>
                     </div>
-                    {% else %}
-                    <div class="alert alert-info">
-                        <i class="bi bi-info-circle me-2"></i> Cart is empty. Add products to begin a transaction.
-                    </div>
-                    {% endif %}
                 </div>
             </div>
         </div>
@@ -302,30 +305,609 @@
     .history-section:hover {
         opacity: 1;
     }
+    
+    /* New Cart UI Styles */
+    .cart-items-container {
+        min-height: 300px;
+        max-height: 400px;
+        overflow-y: auto;
+    }
+    
+    /* Search Bar Styles */
+    .search-card {
+        margin-bottom: 1rem;
+    }
+    
+    .search-card .form-control {
+        height: 38px;
+    }
+    
+    .search-card .btn-primary {
+        height: 38px;
+    }
+    
+    /* Updated Cart Control Bar Styles */
+    .cart-control-bar {
+        display: flex;
+        background-color: #f8f9fa;
+        border-top: 1px solid #dee2e6;
+        padding: 15px;
+    }
+    
+    /* Quick Actions Styles */
+    .quick-actions {
+        width: 180px;
+        display: flex;
+        flex-direction: column;
+        padding-right: 15px;
+        border-right: 1px solid #dee2e6;
+    }
+    
+    .action-btn {
+        display: flex;
+        align-items: center;
+        justify-content: flex-start;
+        padding: 8px 12px;
+        border-radius: 4px;
+        color: white;
+        text-decoration: none;
+        font-weight: 500;
+        transition: all 0.2s;
+    }
+    
+    .action-btn:hover {
+        opacity: 0.9;
+        color: white;
+    }
+    
+    .custom-product-btn {
+        background-color: #17a2b8;
+    }
+    
+    .quick-add-btn {
+        background-color: #28a745;
+    }
+    
+    .manage-access-btn {
+        background-color: #6c757d;
+    }
+    
+    .numeric-keypad {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        padding: 0 15px;
+        border-right: 1px solid #dee2e6;
+    }
+    
+    .keypad-row {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 5px;
+    }
+    
+    .keypad-btn {
+        width: 50px;
+        height: 40px;
+        background-color: #e9ecef;
+        border: 1px solid #ced4da;
+        border-radius: 4px;
+        font-weight: bold;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    
+    .keypad-btn:hover {
+        background-color: #dee2e6;
+    }
+    
+    .keypad-btn:active {
+        background-color: #ced4da;
+        transform: scale(0.95);
+    }
+    
+    .control-buttons {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-start;
+        padding-left: 15px;
+    }
+    
+    .control-btn {
+        height: 40px;
+        border: none;
+        border-radius: 4px;
+        font-weight: bold;
+        cursor: pointer;
+        transition: all 0.2s;
+        margin-bottom: 5px;
+    }
+    
+    .checkout-btn {
+        background-color: #28a745;
+        color: white;
+        text-decoration: none;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 50px;
+        font-size: 1.1rem;
+    }
+    
+    .checkout-btn:hover {
+        background-color: #218838;
+        color: white;
+    }
+    
+    .checkout-btn:disabled {
+        background-color: #6c757d;
+        cursor: not-allowed;
+    }
+    
+    .clear-cart-btn {
+        background-color: #fd7e14;
+        color: white;
+        text-decoration: none;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 45px;
+    }
+    
+    .clear-cart-btn:hover {
+        background-color: #e76b00;
+        color: white;
+    }
+    
+    .clear-btn {
+        background-color: #dc3545;
+        color: white;
+    }
+    
+    .repeat-btn {
+        background-color: #ffc107;
+        color: #212529;
+    }
+    
+    .confirm-btn {
+        background-color: #0d6efd;
+        color: white;
+    }
+    
+    .cart-items-container {
+        min-height: 300px;
+        max-height: 400px;
+        overflow-y: auto;
+    }
+    
+    .cart-item {
+        cursor: pointer;
+        transition: background-color 0.2s;
+    }
+    
+    .cart-item:hover {
+        background-color: rgba(0, 123, 255, 0.1);
+    }
+    
+    .cart-item.selected {
+        background-color: rgba(0, 123, 255, 0.2);
+    }
+    
+    .price-cell, .quantity-cell {
+        cursor: pointer;
+        position: relative;
+    }
+    
+    .price-cell:hover, .quantity-cell:hover {
+        background-color: rgba(0, 123, 255, 0.1);
+    }
+    
+    .price-cell.selected, .quantity-cell.selected {
+        background-color: rgba(0, 123, 255, 0.2);
+    }
+    
+    .original-price {
+        text-decoration: line-through;
+        font-size: 0.8rem;
+    }
 </style>
 
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        // Quantity increment/decrement
-        document.getElementById('increaseQty').addEventListener('click', function() {
-            let qtyInput = document.getElementById('quantity');
-            qtyInput.value = parseInt(qtyInput.value) + 1;
+        // Current time display with 12-hour format
+        function updateCurrentTime() {
+            const now = new Date();
+            const hours = now.getHours();
+            const minutes = now.getMinutes().toString().padStart(2, '0');
+            const seconds = now.getSeconds().toString().padStart(2, '0');
+            const ampm = hours >= 12 ? 'PM' : 'AM';
+            const displayHours = (hours % 12 || 12).toString().padStart(2, '0');
+            
+            document.getElementById('current-time').textContent = `${displayHours}:${minutes}:${seconds} ${ampm}`;
+            
+            // Update date display
+            const options = { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' };
+            document.getElementById('current-date').textContent = now.toLocaleDateString('en-US', options);
+        }
+        
+        // Update time every second
+        updateCurrentTime();
+        setInterval(updateCurrentTime, 1000);
+        
+        // Order timer
+        let orderSeconds = 0;
+        function updateOrderTimer() {
+            orderSeconds++;
+            const minutes = Math.floor(orderSeconds / 60).toString().padStart(2, '0');
+            const seconds = (orderSeconds % 60).toString().padStart(2, '0');
+            document.getElementById('order-timer').textContent = `${minutes}:${seconds}`;
+        }
+        
+        // Update order timer every second
+        setInterval(updateOrderTimer, 1000);
+        
+        // Multi-functional numpad for price and quantity override
+        let selectedField = null;
+        let selectedFieldType = null;
+        let currentInput = '';
+        const confirmBtn = document.getElementById('confirm-btn');
+        const clearBtn = document.getElementById('clear-btn');
+        const repeatBtn = document.getElementById('repeat-btn');
+        const keypadButtons = document.querySelectorAll('.keypad-btn');
+        const keypadTitle = document.getElementById('keypad-title');
+        
+        // Double-click on price or quantity cell to edit
+        const priceCells = document.querySelectorAll('.price-cell');
+        const quantityCells = document.querySelectorAll('.quantity-cell');
+        
+        // Handle price cell double-click
+        priceCells.forEach(cell => {
+            cell.addEventListener('dblclick', function() {
+                // Deselect any previously selected field
+                if (selectedField) {
+                    selectedField.classList.remove('selected');
+                }
+                
+                // Select current field
+                this.classList.add('selected');
+                selectedField = this;
+                selectedFieldType = 'price';
+                
+                // Update keypad title
+                keypadTitle.textContent = 'Edit Price';
+                
+                // Show confirm button, hide repeat button
+                confirmBtn.style.display = 'block';
+                repeatBtn.style.display = 'none';
+                
+                // Reset current input
+                currentInput = '';
+            });
         });
         
-        document.getElementById('decreaseQty').addEventListener('click', function() {
-            let qtyInput = document.getElementById('quantity');
-            let currentValue = parseInt(qtyInput.value);
-            if (currentValue > 1) {
-                qtyInput.value = currentValue - 1;
+        // Handle quantity cell double-click
+        quantityCells.forEach(cell => {
+            cell.addEventListener('dblclick', function() {
+                // Deselect any previously selected field
+                if (selectedField) {
+                    selectedField.classList.remove('selected');
+                }
+                
+                // Select current field
+                this.classList.add('selected');
+                selectedField = this;
+                selectedFieldType = 'quantity';
+                
+                // Update keypad title
+                keypadTitle.textContent = 'Edit Quantity';
+                
+                // Show confirm button, hide repeat button
+                confirmBtn.style.display = 'block';
+                repeatBtn.style.display = 'none';
+                
+                // Reset current input
+                currentInput = '';
+            });
+        });
+        
+        // Numeric keypad functionality
+        keypadButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                if (!selectedField) return;
+                
+                const value = this.getAttribute('data-value');
+                
+                // Handle decimal point (only allow one and only for price)
+                if (value === '.' && (currentInput.includes('.') || selectedFieldType === 'quantity')) {
+                    return;
+                }
+                
+                currentInput += value;
+                
+                if (selectedFieldType === 'price') {
+                    // Format and display the current input as price
+                    const formattedPrice = formatPrice(currentInput);
+                    const currentPriceElement = selectedField.querySelector('.current-price');
+                    
+                    // Display the new price
+                    currentPriceElement.textContent = '$' + formattedPrice;
+                    
+                    // Store original price if not already stored
+                    const originalPriceElement = selectedField.querySelector('.original-price');
+                    if (!originalPriceElement.textContent) {
+                        const originalPrice = selectedField.getAttribute('data-original-price');
+                        originalPriceElement.textContent = 'Original: $' + parseFloat(originalPrice).toFixed(2);
+                    }
+                } else if (selectedFieldType === 'quantity') {
+                    // Format and display the current input as quantity
+                    const formattedQuantity = formatQuantity(currentInput);
+                    const currentQuantityElement = selectedField.querySelector('.current-quantity');
+                    
+                    // Display the new quantity
+                    currentQuantityElement.textContent = formattedQuantity;
+                }
+            });
+        });
+        
+        // Format price input
+        function formatPrice(input) {
+            // Remove leading zeros
+            input = input.replace(/^0+/, '0');
+            
+            // If input starts with a decimal point, add a leading zero
+            if (input.startsWith('.')) {
+                input = '0' + input;
+            }
+            
+            // If input is empty or just a zero, return "0.00"
+            if (!input || input === '0') {
+                return '0.00';
+            }
+            
+            // If input doesn't contain a decimal point, add ".00"
+            if (!input.includes('.')) {
+                input += '.00';
+            } else {
+                // Ensure there are exactly two decimal places
+                const parts = input.split('.');
+                if (parts[1].length === 0) {
+                    input += '00';
+                } else if (parts[1].length === 1) {
+                    input += '0';
+                } else if (parts[1].length > 2) {
+                    input = parts[0] + '.' + parts[1].substring(0, 2);
+                }
+            }
+            
+            return input;
+        }
+        
+        // Format quantity input
+        function formatQuantity(input) {
+            // Remove leading zeros and any non-numeric characters
+            input = input.replace(/^0+/, '').replace(/[^0-9]/g, '');
+            
+            // If input is empty, return "1"
+            if (!input) {
+                return '1';
+            }
+            
+            return input;
+        }
+        
+        // Confirm button functionality
+        confirmBtn.addEventListener('click', function() {
+            if (!selectedField || !currentInput) return;
+            
+            const productId = selectedField.getAttribute('data-product-id');
+            
+            if (selectedFieldType === 'price') {
+                const newPrice = parseFloat(currentInput);
+                
+                // Update the price in the cart via AJAX
+                updateProductPrice(productId, newPrice);
+            } else if (selectedFieldType === 'quantity') {
+                const newQuantity = parseInt(currentInput);
+                
+                // Update the quantity in the cart via form submission
+                updateProductQuantity(productId, newQuantity);
+            }
+            
+            // Reset UI state
+            resetFieldEditUI();
+        });
+        
+        // Clear button functionality
+        clearBtn.addEventListener('click', function() {
+            if (selectedField) {
+                if (selectedFieldType === 'price') {
+                    // Reset price to original
+                    const originalPrice = selectedField.getAttribute('data-original-price');
+                    const currentPriceElement = selectedField.querySelector('.current-price');
+                    const originalPriceElement = selectedField.querySelector('.original-price');
+                    
+                    currentPriceElement.textContent = '$' + parseFloat(originalPrice).toFixed(2);
+                    originalPriceElement.textContent = '';
+                    
+                    // Reset price in the cart via AJAX
+                    updateProductPrice(selectedField.getAttribute('data-product-id'), originalPrice);
+                } else if (selectedFieldType === 'quantity') {
+                    // Reset quantity to original
+                    const originalQuantity = selectedField.getAttribute('data-original-quantity');
+                    const currentQuantityElement = selectedField.querySelector('.current-quantity');
+                    
+                    currentQuantityElement.textContent = originalQuantity;
+                    
+                    // Reset quantity in the cart via form submission
+                    updateProductQuantity(selectedField.getAttribute('data-product-id'), originalQuantity);
+                }
+                
+                // Reset UI state
+                resetFieldEditUI();
+            } else {
+                // If no field is selected, just clear the input
+                currentInput = '';
             }
         });
         
-        // Initialize product select with search
-        $('.product-select').select2({
-            theme: 'bootstrap-5',
-            placeholder: 'Select a product',
-            width: '100%'
+        // Reset UI after field edit
+        function resetFieldEditUI() {
+            if (selectedField) {
+                selectedField.classList.remove('selected');
+                selectedField = null;
+                selectedFieldType = null;
+            }
+            
+            currentInput = '';
+            confirmBtn.style.display = 'none';
+            repeatBtn.style.display = 'block';
+            keypadTitle.textContent = 'Numpad';
+            
+            // Recalculate cart total
+            recalculateCartTotal();
+        }
+        
+        // Update product price via AJAX
+        function updateProductPrice(productId, newPrice) {
+            // Create a form to submit the price update
+            const form = document.createElement('form');
+            form.method = 'post';
+            form.action = '/update_price/' + productId;
+            form.style.display = 'none';
+            
+            const priceInput = document.createElement('input');
+            priceInput.type = 'hidden';
+            priceInput.name = 'price';
+            priceInput.value = newPrice;
+            
+            const csrfInput = document.createElement('input');
+            csrfInput.type = 'hidden';
+            csrfInput.name = 'csrf_token';
+            csrfInput.value = document.querySelector('input[name="csrf_token"]').value;
+            
+            form.appendChild(priceInput);
+            form.appendChild(csrfInput);
+            document.body.appendChild(form);
+            
+            form.submit();
+        }
+        
+        // Update product quantity via form submission
+        function updateProductQuantity(productId, newQuantity) {
+            // Create a form to submit the quantity update
+            const form = document.createElement('form');
+            form.method = 'post';
+            form.action = '/update_quantity/' + productId;
+            form.style.display = 'none';
+            
+            const quantityInput = document.createElement('input');
+            quantityInput.type = 'hidden';
+            quantityInput.name = 'quantity';
+            quantityInput.value = newQuantity;
+            
+            const csrfInput = document.createElement('input');
+            csrfInput.type = 'hidden';
+            csrfInput.name = 'csrf_token';
+            csrfInput.value = document.querySelector('input[name="csrf_token"]').value;
+            
+            form.appendChild(quantityInput);
+            form.appendChild(csrfInput);
+            document.body.appendChild(form);
+            
+            form.submit();
+        }
+        
+        // Recalculate cart total
+        function recalculateCartTotal() {
+            let total = 0;
+            document.querySelectorAll('.cart-item').forEach(item => {
+                const price = parseFloat(item.querySelector('.current-price').textContent.replace('$', ''));
+                const quantity = parseInt(item.querySelector('.current-quantity').textContent);
+                total += price * quantity;
+            });
+            
+            // Update cart total in the minimalistic header
+            document.getElementById('cart-total').textContent = '$' + total.toFixed(2);
+        }
+        
+        // Repeat button functionality
+        document.querySelector('.repeat-btn').addEventListener('click', function() {
+            console.log('Repeat last action');
+            // Implement repeat functionality based on your requirements
         });
+        
+        // Close edit mode when clicking outside
+        document.addEventListener('click', function(event) {
+            if (selectedField && !event.target.closest('.keypad-btn') && 
+                !event.target.closest('.price-cell') && 
+                !event.target.closest('.quantity-cell') && 
+                !event.target.closest('.control-btn')) {
+                resetFieldEditUI();
+            }
+        });
+    });
+    
+    // Cart Animation Functions
+    function animateCartIcon() {
+        // Find the cart header and add animation class
+        const cartHeader = document.querySelector('.card-header:contains("Cart")');
+        if (cartHeader) {
+            cartHeader.classList.add('cart-animation');
+            setTimeout(() => {
+                cartHeader.classList.remove('cart-animation');
+            }, 500);
+        }
+    }
+    
+    function animateCartTotal() {
+        // Animate the cart total
+        const cartTotal = document.getElementById('cart-total');
+        if (cartTotal) {
+            cartTotal.classList.add('bounce-animation');
+            setTimeout(() => {
+                cartTotal.classList.remove('bounce-animation');
+            }, 800);
+        }
+    }
+    
+    // Listen for form submissions that add products to cart
+    document.addEventListener('DOMContentLoaded', function() {
+        // For quick access products
+        const quickAccessForms = document.querySelectorAll('form[action*="add_to_cart_from_quick_access"]');
+        quickAccessForms.forEach(form => {
+            form.addEventListener('submit', function(e) {
+                // Don't prevent default - let the form submit normally
+                // But add animation to the button
+                const button = this.querySelector('button');
+                if (button) {
+                    button.classList.add('product-added');
+                    setTimeout(() => {
+                        button.classList.remove('product-added');
+                    }, 500);
+                }
+                
+                // Animate cart elements
+                animateCartIcon();
+                animateCartTotal();
+            });
+        });
+        
+        // For custom products or other add to cart forms
+        const addToCartForms = document.querySelectorAll('form[action*="add_to_cart"]');
+        addToCartForms.forEach(form => {
+            if (!form.getAttribute('action').includes('quick_access')) {
+                form.addEventListener('submit', function() {
+                    animateCartIcon();
+                    animateCartTotal();
+                });
+            }
+        });
+        
+        // Fix for jQuery selector in JavaScript
+        jQuery.expr[':'].contains = function(a, i, m) {
+            return jQuery(a).text().toUpperCase().indexOf(m[3].toUpperCase()) >= 0;
+        };
     });
 </script>
 {% endblock %} 

@@ -204,6 +204,54 @@
                 document.getElementById('quickAddForm').submit();
             }
         });
+        
+        // Cart Animation Functions
+        function animateCartIcon() {
+            // Find the cart header and add animation class
+            const cartHeader = document.querySelector('.card-header:contains("Cart")');
+            if (cartHeader) {
+                cartHeader.classList.add('cart-animation');
+                setTimeout(() => {
+                    cartHeader.classList.remove('cart-animation');
+                }, 500);
+            }
+        }
+        
+        function animateCartTotal() {
+            // Find the cart total and add animation
+            const cartTotalRow = document.querySelector('tfoot tr th:last-child');
+            if (cartTotalRow) {
+                cartTotalRow.classList.add('bounce-animation');
+                setTimeout(() => {
+                    cartTotalRow.classList.remove('bounce-animation');
+                }, 800);
+            }
+        }
+        
+        // For quick add form
+        const quickAddForm = document.getElementById('quickAddForm');
+        if (quickAddForm) {
+            quickAddForm.addEventListener('submit', function() {
+                // Store the product code for animation after page reload
+                localStorage.setItem('lastAddedProduct', document.getElementById('product_code').value);
+            });
+        }
+        
+        // Check if we just added a product (after page reload)
+        const lastAddedProduct = localStorage.getItem('lastAddedProduct');
+        if (lastAddedProduct) {
+            // Clear the stored value
+            localStorage.removeItem('lastAddedProduct');
+            
+            // Animate cart elements
+            animateCartIcon();
+            animateCartTotal();
+        }
+        
+        // Fix for jQuery selector in JavaScript
+        jQuery.expr[':'].contains = function(a, i, m) {
+            return jQuery(a).text().toUpperCase().indexOf(m[3].toUpperCase()) >= 0;
+        };
     });
 </script>
 {% endblock %} 

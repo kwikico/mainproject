@@ -42,6 +42,55 @@
             font-size: 1.2rem;
             padding: 0.75rem 1.5rem;
         }
+        
+        /* Cart Animation Styles */
+        @keyframes pulse {
+            0% {
+                transform: scale(1);
+            }
+            50% {
+                transform: scale(1.1);
+            }
+            100% {
+                transform: scale(1);
+            }
+        }
+        
+        @keyframes bounce {
+            0%, 20%, 50%, 80%, 100% {
+                transform: translateY(0);
+            }
+            40% {
+                transform: translateY(-10px);
+            }
+            60% {
+                transform: translateY(-5px);
+            }
+        }
+        
+        .cart-animation {
+            animation: pulse 0.5s ease-in-out;
+        }
+        
+        .bounce-animation {
+            animation: bounce 0.8s ease;
+        }
+        
+        .product-added {
+            position: relative;
+        }
+        
+        .product-added::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(40, 167, 69, 0.2);
+            border-radius: 0.25rem;
+            animation: pulse 0.5s ease-in-out;
+        }
     </style>
 </head>
 <body>
@@ -82,9 +131,6 @@
                     <a href="{{ url_for('new_transaction') }}" class="list-group-item list-group-item-action {% if request.path == url_for('new_transaction') %}active{% endif %}">
                         <i class="bi bi-cart-plus me-2"></i> New Transaction
                     </a>
-                    <a href="{{ url_for('quick_add') }}" class="list-group-item list-group-item-action {% if request.path == url_for('quick_add') %}active{% endif %}">
-                        <i class="bi bi-upc-scan me-2"></i> Quick Add / Scan
-                    </a>
                     <a href="{{ url_for('search_products') }}" class="list-group-item list-group-item-action {% if request.path == url_for('search_products') %}active{% endif %}">
                         <i class="bi bi-search me-2"></i> Product Search
                     </a>
@@ -107,18 +153,20 @@
                     {% endif %}
                 </div>
             </div>
-            <div class="col-md-10 content py-3">
+            <div class="col-md-10 content py-2">
             {% else %}
-            <div class="col-12 content py-3">
+            <div class="col-12 content py-2">
             {% endif %}
                 <!-- Flash messages -->
                 {% with messages = get_flashed_messages(with_categories=true) %}
                     {% if messages %}
                         {% for category, message in messages %}
-                            <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                            {% if not 'Added' in message and not 'Updated quantity' in message %}
+                            <div class="alert alert-{{ category }} alert-dismissible fade show mb-2" role="alert">
                                 {{ message }}
                                 <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                             </div>
+                            {% endif %}
                         {% endfor %}
                     {% endif %}
                 {% endwith %}
