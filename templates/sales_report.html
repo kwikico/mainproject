@@ -6,10 +6,90 @@
 <div class="container-fluid">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h1>Sales Report</h1>
-        <a href="{{ url_for('reports') }}" class="btn btn-secondary">
-            <i class="bi bi-arrow-left me-1"></i> Back to Reports
-        </a>
+        <div>
+            <a href="{{ url_for('export_sales_report', period=period) }}" class="btn btn-success me-2">
+                <i class="bi bi-download me-1"></i> Export CSV
+            </a>
+            <a href="{{ url_for('reports') }}" class="btn btn-secondary">
+                <i class="bi bi-arrow-left me-1"></i> Back to Reports
+            </a>
+        </div>
     </div>
+    
+    <!-- Period Selection -->
+    <div class="card mb-4">
+        <div class="card-header bg-light">
+            <h5 class="mb-0">Filter by Period</h5>
+        </div>
+        <div class="card-body">
+            <form id="periodForm" method="get" action="{{ url_for('sales_report') }}" class="row g-3 align-items-end">
+                <div class="col-md-auto">
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="radio" name="period" id="periodAll" value="all" {% if period == 'all' %}checked{% endif %}>
+                        <label class="form-check-label" for="periodAll">All Time</label>
+                    </div>
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="radio" name="period" id="periodDaily" value="daily" {% if period == 'daily' %}checked{% endif %}>
+                        <label class="form-check-label" for="periodDaily">Daily</label>
+                    </div>
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="radio" name="period" id="periodWeekly" value="weekly" {% if period == 'weekly' %}checked{% endif %}>
+                        <label class="form-check-label" for="periodWeekly">Weekly</label>
+                    </div>
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="radio" name="period" id="periodMonthly" value="monthly" {% if period == 'monthly' %}checked{% endif %}>
+                        <label class="form-check-label" for="periodMonthly">Monthly</label>
+                    </div>
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="radio" name="period" id="periodYearly" value="yearly" {% if period == 'yearly' %}checked{% endif %}>
+                        <label class="form-check-label" for="periodYearly">Yearly</label>
+                    </div>
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="radio" name="period" id="periodCustom" value="custom" {% if period.startswith('custom:') %}checked{% endif %}>
+                        <label class="form-check-label" for="periodCustom">Custom</label>
+                    </div>
+                </div>
+                
+                <div id="customDateContainer" class="row g-3 mt-2 {% if not period.startswith('custom:') %}d-none{% endif %}">
+                    <div class="col-md-auto">
+                        <label for="startDate" class="form-label">Start Date</label>
+                        <input type="date" class="form-control" id="startDate" name="startDate" 
+                               value="{% if start_date %}{{ start_date.strftime('%Y-%m-%d') }}{% endif %}">
+                    </div>
+                    <div class="col-md-auto">
+                        <label for="endDate" class="form-label">End Date</label>
+                        <input type="date" class="form-control" id="endDate" name="endDate" 
+                               value="{% if end_date %}{{ end_date.strftime('%Y-%m-%d') }}{% endif %}">
+                    </div>
+                </div>
+                
+                <div class="col-md-auto">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-filter me-1"></i> Apply Filter
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Period Information -->
+    {% if period != 'all' %}
+    <div class="alert alert-info mb-4">
+        <i class="bi bi-info-circle me-2"></i> 
+        Showing data for: 
+        {% if period == 'daily' %}
+            Today ({{ start_date.strftime('%Y-%m-%d') }})
+        {% elif period == 'weekly' %}
+            This Week ({{ start_date.strftime('%Y-%m-%d') }} to {{ end_date.strftime('%Y-%m-%d') }})
+        {% elif period == 'monthly' %}
+            This Month ({{ start_date.strftime('%B %Y') }})
+        {% elif period == 'yearly' %}
+            This Year ({{ start_date.strftime('%Y') }})
+        {% elif period.startswith('custom:') %}
+            Custom Range ({{ start_date.strftime('%Y-%m-%d') }} to {{ end_date.strftime('%Y-%m-%d') }})
+        {% endif %}
+    </div>
+    {% endif %}
     
     <div class="row mb-4">
         <div class="col-md-4">
@@ -34,13 +114,23 @@
                     <h5 class="card-title">Average Transaction</h5>
                     <h2 class="display-4">
                         {% if transactions|length > 0 %}
-                        ${{ "%.2f"|format(total_sales / transactions|length) }}
+                        ${{ "%.2f"|format(avg_transaction) }}
                         {% else %}
                         $0.00
                         {% endif %}
                     </h2>
                 </div>
             </div>
+        </div>
+    </div>
+    
+    <!-- Sales Chart -->
+    <div class="card mb-4">
+        <div class="card-header bg-light">
+            <h5 class="mb-0">Sales Trend</h5>
+        </div>
+        <div class="card-body">
+            <canvas id="salesChart" height="300"></canvas>
         </div>
     </div>
     
@@ -86,10 +176,102 @@
             
             {% if not transactions %}
             <div class="alert alert-info">
-                <i class="bi bi-info-circle me-2"></i> No transactions found.
+                <i class="bi bi-info-circle me-2"></i> No transactions found for the selected period.
             </div>
             {% endif %}
         </div>
     </div>
 </div>
+
+{% block scripts %}
+<!-- Include Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Handle custom date range visibility
+        const periodRadios = document.querySelectorAll('input[name="period"]');
+        const customDateContainer = document.getElementById('customDateContainer');
+        
+        periodRadios.forEach(radio => {
+            radio.addEventListener('change', function() {
+                if (this.value === 'custom') {
+                    customDateContainer.classList.remove('d-none');
+                } else {
+                    customDateContainer.classList.add('d-none');
+                }
+            });
+        });
+        
+        // Handle form submission for custom date range
+        const periodForm = document.getElementById('periodForm');
+        periodForm.addEventListener('submit', function(e) {
+            const customRadio = document.getElementById('periodCustom');
+            
+            if (customRadio.checked) {
+                e.preventDefault();
+                const startDate = document.getElementById('startDate').value;
+                const endDate = document.getElementById('endDate').value;
+                
+                if (!startDate || !endDate) {
+                    alert('Please select both start and end dates for custom range');
+                    return;
+                }
+                
+                // Redirect with custom period format
+                window.location.href = `{{ url_for('sales_report') }}?period=custom:${startDate}:${endDate}`;
+            }
+        });
+        
+        // Load chart data
+        fetch(`{{ url_for('api_sales_chart_data') }}?period={{ period }}`)
+            .then(response => response.json())
+            .then(data => {
+                const ctx = document.getElementById('salesChart').getContext('2d');
+                
+                new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: data.labels,
+                        datasets: [{
+                            label: 'Sales ($)',
+                            data: data.values,
+                            backgroundColor: 'rgba(54, 162, 235, 0.5)',
+                            borderColor: 'rgba(54, 162, 235, 1)',
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: {
+                                    callback: function(value) {
+                                        return '$' + value.toFixed(2);
+                                    }
+                                }
+                            }
+                        },
+                        plugins: {
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        return '$' + context.raw.toFixed(2);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+            })
+            .catch(error => {
+                console.error('Error loading chart data:', error);
+                document.getElementById('salesChart').parentNode.innerHTML = 
+                    '<div class="alert alert-danger">Error loading chart data</div>';
+            });
+    });
+</script>
+{% endblock %}
+
 {% endblock %} 

@@ -32,7 +32,7 @@
             <div class="card bg-warning text-dark">
                 <div class="card-body">
                     <h5 class="card-title">Low Stock Items</h5>
-                    <h2 class="display-4">{{ products|selectattr('quantity', '<=', 'low_stock_threshold')|list|length }}</h2>
+                    <h2 class="display-4">{{ products|count_low_stock }}</h2>
                 </div>
             </div>
         </div>

@@ -1,8 +1,11 @@
 import os
-from flask import Flask, render_template, redirect, url_for, flash, session, request, g, jsonify
+from flask import Flask, render_template, redirect, url_for, flash, session, request, g, jsonify, Response
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
 import click
+from datetime import datetime, timedelta
+import csv
+from io import StringIO
 
 from models import db, User, Product, Transaction, TransactionItem, QuickAccessProduct
 from forms import (
@@ -607,10 +610,177 @@ def create_app(test_config=None):
             flash('Access denied. Manager role required.', 'danger')
             return redirect(url_for('dashboard'))
             
-        transactions = Transaction.query.filter_by(is_return=False).all()
+        # Get period from query parameter, default to 'all'
+        period = request.args.get('period', 'all')
+        
+        # Get transactions based on the selected period
+        transactions, start_date, end_date = get_transactions_by_period(period)
+        
+        # Calculate totals
         total_sales = sum(t.total_amount for t in transactions)
-        return render_template('sales_report.html', transactions=transactions, total_sales=total_sales)
-
+        avg_transaction = total_sales / len(transactions) if transactions else 0
+        
+        return render_template(
+            'sales_report.html', 
+            transactions=transactions, 
+            total_sales=total_sales,
+            avg_transaction=avg_transaction,
+            period=period,
+            start_date=start_date,
+            end_date=end_date
+        )
+    
+    @app.route('/api/reports/sales')
+    @login_required
+    def api_sales_report():
+        if current_user.role != 'manager':
+            return jsonify({'error': 'Access denied'}), 403
+            
+        period = request.args.get('period', 'all')
+        transactions, start_date, end_date = get_transactions_by_period(period)
+        
+        # Format data for API response
+        transaction_data = [{
+            'id': t.id,
+            'date': t.date.strftime('%Y-%m-%d %H:%M:%S'),
+            'cashier': t.user.username,
+            'items_count': len(t.items),
+            'payment_method': t.payment_method,
+            'discount': t.discount_amount,
+            'total': t.total_amount
+        } for t in transactions]
+        
+        total_sales = sum(t.total_amount for t in transactions)
+        avg_transaction = total_sales / len(transactions) if transactions else 0
+        
+        return jsonify({
+            'transactions': transaction_data,
+            'total_sales': total_sales,
+            'transaction_count': len(transactions),
+            'avg_transaction': avg_transaction,
+            'period': period,
+            'start_date': start_date.strftime('%Y-%m-%d') if start_date else None,
+            'end_date': end_date.strftime('%Y-%m-%d') if end_date else None
+        })
+    
+    @app.route('/api/reports/sales/chart-data')
+    @login_required
+    def api_sales_chart_data():
+        if current_user.role != 'manager':
+            return jsonify({'error': 'Access denied'}), 403
+            
+        period = request.args.get('period', 'all')
+        transactions, start_date, end_date = get_transactions_by_period(period)
+        
+        # Group data by date for charting
+        chart_data = {}
+        
+        if period == 'daily':
+            # Group by hour
+            for t in transactions:
+                hour = t.date.strftime('%H:00')
+                if hour not in chart_data:
+                    chart_data[hour] = 0
+                chart_data[hour] += t.total_amount
+                
+        elif period == 'weekly':
+            # Group by day of week
+            for t in transactions:
+                day = t.date.strftime('%a')  # Mon, Tue, etc.
+                if day not in chart_data:
+                    chart_data[day] = 0
+                chart_data[day] += t.total_amount
+                
+        elif period == 'monthly':
+            # Group by day of month
+            for t in transactions:
+                day = t.date.strftime('%d')  # 01, 02, etc.
+                if day not in chart_data:
+                    chart_data[day] = 0
+                chart_data[day] += t.total_amount
+                
+        elif period == 'yearly':
+            # Group by month
+            for t in transactions:
+                month = t.date.strftime('%b')  # Jan, Feb, etc.
+                if month not in chart_data:
+                    chart_data[month] = 0
+                chart_data[month] += t.total_amount
+                
+        else:
+            # Group by month-year for all time or custom
+            for t in transactions:
+                month_year = t.date.strftime('%b %Y')
+                if month_year not in chart_data:
+                    chart_data[month_year] = 0
+                chart_data[month_year] += t.total_amount
+        
+        # Convert to lists for Chart.js
+        labels = list(chart_data.keys())
+        values = list(chart_data.values())
+        
+        return jsonify({
+            'labels': labels,
+            'values': values
+        })
+    
+    def get_transactions_by_period(period):
+        """
+        Get transactions filtered by time period.
+        
+        Args:
+            period (str): One of 'daily', 'weekly', 'monthly', 'yearly', 'all', 
+                          or 'custom:YYYY-MM-DD:YYYY-MM-DD' for custom date range
+        
+        Returns:
+            tuple: (transactions, start_date, end_date)
+        """
+        today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+        start_date = None
+        end_date = None
+        
+        if period == 'daily':
+            # Today's transactions
+            start_date = today
+            end_date = today + timedelta(days=1) - timedelta(microseconds=1)
+        elif period == 'weekly':
+            # This week's transactions (starting Monday)
+            start_date = today - timedelta(days=today.weekday())
+            end_date = start_date + timedelta(days=7) - timedelta(microseconds=1)
+        elif period == 'monthly':
+            # This month's transactions
+            start_date = today.replace(day=1)
+            if start_date.month == 12:
+                end_date = start_date.replace(year=start_date.year + 1, month=1) - timedelta(microseconds=1)
+            else:
+                end_date = start_date.replace(month=start_date.month + 1) - timedelta(microseconds=1)
+        elif period == 'yearly':
+            # This year's transactions
+            start_date = today.replace(month=1, day=1)
+            end_date = start_date.replace(year=start_date.year + 1) - timedelta(microseconds=1)
+        elif period.startswith('custom:'):
+            # Custom date range: custom:YYYY-MM-DD:YYYY-MM-DD
+            try:
+                dates = period.split(':')
+                start_date = datetime.strptime(dates[1], '%Y-%m-%d')
+                end_date = datetime.strptime(dates[2], '%Y-%m-%d') + timedelta(days=1) - timedelta(microseconds=1)
+            except (IndexError, ValueError):
+                # If custom format is invalid, default to all transactions
+                pass
+        
+        # Filter transactions based on date range
+        if start_date and end_date:
+            transactions = Transaction.query.filter(
+                Transaction.date >= start_date,
+                Transaction.date <= end_date,
+                Transaction.is_return == False
+            ).order_by(Transaction.date.desc()).all()
+        else:
+            # Default: all transactions
+            transactions = Transaction.query.filter_by(is_return=False).order_by(Transaction.date.desc()).all()
+            
+        return transactions, start_date, end_date
+    
     @app.route('/reports/inventory')
     @login_required
     def inventory_report():
@@ -818,6 +988,64 @@ def create_app(test_config=None):
             return redirect(url_for('new_transaction'))
         
         return render_template('custom_product.html', form=form)
+
+    @app.route('/reports/sales/export')
+    @login_required
+    def export_sales_report():
+        if current_user.role != 'manager':
+            flash('Access denied. Manager role required.', 'danger')
+            return redirect(url_for('dashboard'))
+            
+        period = request.args.get('period', 'all')
+        transactions, start_date, end_date = get_transactions_by_period(period)
+        
+        # Create CSV data
+        output = StringIO()
+        writer = csv.writer(output)
+        
+        # Write header
+        writer.writerow(['ID', 'Date', 'Cashier', 'Items', 'Payment Method', 'Discount', 'Total'])
+        
+        # Write transaction data
+        for t in transactions:
+            writer.writerow([
+                t.id,
+                t.date.strftime('%Y-%m-%d %H:%M:%S'),
+                t.user.username,
+                len(t.items),
+                t.payment_method,
+                f"${t.discount_amount:.2f}" if t.discount_amount > 0 else "-",
+                f"${t.total_amount:.2f}"
+            ])
+        
+        # Prepare response
+        output.seek(0)
+        
+        # Generate filename based on period
+        if period == 'daily':
+            filename = f"sales_report_daily_{start_date.strftime('%Y-%m-%d')}.csv"
+        elif period == 'weekly':
+            filename = f"sales_report_weekly_{start_date.strftime('%Y-%m-%d')}_to_{end_date.strftime('%Y-%m-%d')}.csv"
+        elif period == 'monthly':
+            filename = f"sales_report_monthly_{start_date.strftime('%Y-%m')}.csv"
+        elif period == 'yearly':
+            filename = f"sales_report_yearly_{start_date.strftime('%Y')}.csv"
+        elif period.startswith('custom:'):
+            filename = f"sales_report_custom_{start_date.strftime('%Y-%m-%d')}_to_{end_date.strftime('%Y-%m-%d')}.csv"
+        else:
+            filename = "sales_report_all.csv"
+        
+        return Response(
+            output.getvalue(),
+            mimetype="text/csv",
+            headers={"Content-disposition": f"attachment; filename={filename}"}
+        )
+
+    # Add custom Jinja2 filters
+    @app.template_filter('count_low_stock')
+    def count_low_stock(products):
+        """Count products where quantity is less than or equal to low_stock_threshold"""
+        return sum(1 for p in products if p.quantity <= p.low_stock_threshold)
 
     return app
 

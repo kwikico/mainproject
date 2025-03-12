@@ -14,10 +14,24 @@
                 </div>
                 <div class="card-body">
                     <p>View detailed sales information including transaction history, total sales, and payment methods.</p>
-                    <div class="d-grid">
+                    <div class="d-grid gap-2">
                         <a href="{{ url_for('sales_report') }}" class="btn btn-primary">
-                            <i class="bi bi-graph-up me-1"></i> View Sales Report
+                            <i class="bi bi-graph-up me-1"></i> View All Sales
                         </a>
+                        <div class="btn-group mt-2">
+                            <a href="{{ url_for('sales_report', period='daily') }}" class="btn btn-outline-primary">
+                                <i class="bi bi-calendar-day me-1"></i> Daily
+                            </a>
+                            <a href="{{ url_for('sales_report', period='weekly') }}" class="btn btn-outline-primary">
+                                <i class="bi bi-calendar-week me-1"></i> Weekly
+                            </a>
+                            <a href="{{ url_for('sales_report', period='monthly') }}" class="btn btn-outline-primary">
+                                <i class="bi bi-calendar-month me-1"></i> Monthly
+                            </a>
+                            <a href="{{ url_for('sales_report', period='yearly') }}" class="btn btn-outline-primary">
+                                <i class="bi bi-calendar me-1"></i> Yearly
+                            </a>
+                        </div>
                     </div>
                 </div>
             </div>
