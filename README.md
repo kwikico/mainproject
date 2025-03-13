@@ -89,4 +89,59 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 - Bootstrap for the UI components
 - Select2 for enhanced select boxes
-- Bootstrap Icons for the icon set 
+- Bootstrap Icons for the icon set
+
+## Heroku Deployment
+
+This application is configured for deployment on Heroku. Follow these steps to deploy:
+
+1. Make sure you have the Heroku CLI installed and are logged in:
+   ```
+   heroku login
+   ```
+
+2. Create a new Heroku app:
+   ```
+   heroku create your-app-name
+   ```
+
+3. Provision a PostgreSQL database:
+   ```
+   heroku addons:create heroku-postgresql:hobby-dev
+   ```
+
+4. Push your code to Heroku:
+   ```
+   git push heroku main
+   ```
+   (If your default branch is master, use `git push heroku master`)
+
+5. Initialize the database on Heroku:
+   ```
+   heroku run python init_heroku_db.py
+   ```
+
+6. Open your application:
+   ```
+   heroku open
+   ```
+
+7. Check logs if errors occur:
+   ```
+   heroku logs --tail
+   ```
+
+## Local Development
+
+For local development:
+
+1. Set the FLASK_ENV environment variable to 'development':
+   ```
+   export FLASK_ENV=development  # Unix/Mac
+   set FLASK_ENV=development     # Windows
+   ```
+
+2. Run the application:
+   ```
+   python run.py
+   ``` 
