@@ -298,25 +298,36 @@ def create_app(test_config=None):
     @app.route('/update_price/<int:product_id>', methods=['POST'])
     @login_required
     def update_price(product_id):
-        new_price = float(request.form.get('price', 0))
-        if new_price < 0:
-            flash('Price cannot be negative', 'danger')
+        try:
+            new_price = float(request.form.get('price', 0))
+            if new_price < 0:
+                flash('Price cannot be negative', 'danger')
+                return redirect(url_for('new_transaction'))
+            
+            cart = session.get('cart', [])
+            for item in cart:
+                if item['product_id'] == product_id:
+                    # Store the original price if this is the first price override
+                    if not item.get('is_custom_price', False):
+                        item['original_price'] = item['price']
+                    
+                    # Update the price
+                    item['price'] = new_price
+                    item['is_custom_price'] = True
+                    
+                    # Recalculate subtotal for this item
+                    item['subtotal'] = new_price * item['quantity']
+                    
+                    session['cart'] = cart
+                    session.modified = True  # Force session update
+                    
+                    flash('Price updated', 'success')
+                    break
+                    
             return redirect(url_for('new_transaction'))
-        
-        cart = session.get('cart', [])
-        for item in cart:
-            if item['product_id'] == product_id:
-                # Store the original price if this is the first price override
-                if not item.get('is_custom_price', False):
-                    item['original_price'] = item['price']
-                
-                item['price'] = new_price
-                item['is_custom_price'] = True
-                session['cart'] = cart
-                flash('Price updated', 'success')
-                break
-        
-        return redirect(url_for('new_transaction'))
+        except ValueError:
+            flash('Invalid price value', 'danger')
+            return redirect(url_for('new_transaction'))
 
     @app.route('/transactions/clear_cart', methods=['GET'])
     @login_required
@@ -450,7 +461,7 @@ def create_app(test_config=None):
             amount_tendered = form.amount_tendered.data
             discount_amount = form.discount_amount.data or 0
             
-            # Calculate total
+            # Calculate total - using the UPDATED prices in the cart
             subtotal = sum(item['price'] * item['quantity'] for item in cart)
             total_amount = subtotal - discount_amount
             
@@ -468,14 +479,14 @@ def create_app(test_config=None):
             db.session.add(transaction)
             db.session.flush()  # Get transaction ID without committing
             
-            # Add transaction items
+            # Add transaction items with proper prices
             for item in cart:
                 if item.get('is_custom_product', False):
                     # Custom product (not in inventory)
                     transaction_item = TransactionItem(
                         transaction_id=transaction.id,
                         quantity=item['quantity'],
-                        price_at_time_of_sale=item['price'],
+                        price_at_time_of_sale=item['price'],  # Use current price from cart
                         custom_name=item['name'],
                         is_custom_product=True
                     )
@@ -490,12 +501,12 @@ def create_app(test_config=None):
                         if product.quantity >= item['quantity']:
                             product.quantity -= item['quantity']
                             
-                            # Create transaction item
+                            # Create transaction item with the price from cart (which may be custom)
                             transaction_item = TransactionItem(
                                 transaction_id=transaction.id,
                                 product_id=product_id,
                                 quantity=item['quantity'],
-                                price_at_time_of_sale=item['price'],
+                                price_at_time_of_sale=item['price'],  # Use current price from cart
                                 is_custom_product=False
                             )
                             db.session.add(transaction_item)
@@ -522,7 +533,7 @@ def create_app(test_config=None):
                                   amount_tendered=amount_tendered,
                                   change=change)
         
-        # Calculate totals
+        # Calculate totals using current prices in cart
         subtotal = sum(item['price'] * item['quantity'] for item in cart)
         
         return render_template('checkout.html', cart=cart, form=form, subtotal=subtotal, total=subtotal)
