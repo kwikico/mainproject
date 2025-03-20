@@ -769,6 +769,7 @@
         }
         
         // Update product price via AJAX
+        // Update product price via AJAX - Improved version
         function updateProductPrice(productId, newPrice) {
             // Create a form to submit the price update
             const form = document.createElement('form');
@@ -790,10 +791,34 @@
             form.appendChild(csrfInput);
             document.body.appendChild(form);
             
+            // This is where we need to update the UI immediately while the form submits
+            // Find the cart item and update its display price and subtotal
+            const cartItem = document.querySelector(`.cart-item[data-product-id="${productId}"]`);
+            if (cartItem) {
+                const priceCell = cartItem.querySelector('.price-cell');
+                const priceDisplay = priceCell.querySelector('.current-price');
+                const quantityCell = cartItem.querySelector('.quantity-cell');
+                const quantityDisplay = quantityCell.querySelector('.current-quantity');
+                
+                // Update price display
+                priceDisplay.textContent = '$' + parseFloat(newPrice).toFixed(2);
+                
+                // Update subtotal based on quantity
+                const quantity = parseInt(quantityDisplay.textContent);
+                const subtotal = newPrice * quantity;
+                const subtotalCell = cartItem.querySelector('td:nth-child(4)');
+                if (subtotalCell) {
+                    subtotalCell.textContent = '$' + subtotal.toFixed(2);
+                }
+                
+                // Update total
+                recalculateCartTotal();
+            }
+            
             form.submit();
         }
         
-        // Update product quantity via form submission
+        // Similarly, update the quantity update function to properly recalculate
         function updateProductQuantity(productId, newQuantity) {
             // Create a form to submit the quantity update
             const form = document.createElement('form');
@@ -815,20 +840,57 @@
             form.appendChild(csrfInput);
             document.body.appendChild(form);
             
+            // Update UI immediately
+            const cartItem = document.querySelector(`.cart-item[data-product-id="${productId}"]`);
+            if (cartItem) {
+                const priceCell = cartItem.querySelector('.price-cell');
+                const priceDisplay = priceCell.querySelector('.current-price');
+                const price = parseFloat(priceDisplay.textContent.replace('$', ''));
+                
+                // Update subtotal
+                const subtotal = price * newQuantity;
+                const subtotalCell = cartItem.querySelector('td:nth-child(4)');
+                if (subtotalCell) {
+                    subtotalCell.textContent = '$' + subtotal.toFixed(2);
+                }
+                
+                // Update total
+                recalculateCartTotal();
+            }
+            
             form.submit();
         }
         
-        // Recalculate cart total
+        // Recalculate cart total function (needs improvement)
         function recalculateCartTotal() {
             let total = 0;
             document.querySelectorAll('.cart-item').forEach(item => {
-                const price = parseFloat(item.querySelector('.current-price').textContent.replace('$', ''));
+                // Get price from the current-price element (which contains the updated price)
+                const priceText = item.querySelector('.current-price').textContent;
+                // Extract numeric value from the price text (remove $ symbol)
+                const price = parseFloat(priceText.replace('$', ''));
+                
+                // Get quantity from the current-quantity element
                 const quantity = parseInt(item.querySelector('.current-quantity').textContent);
-                total += price * quantity;
+                
+                // Calculate subtotal for this item
+                const subtotal = price * quantity;
+                
+                // Update the subtotal cell for this item
+                const subtotalCell = item.querySelector('td:nth-child(4)');
+                if (subtotalCell) {
+                    subtotalCell.textContent = '$' + subtotal.toFixed(2);
+                }
+                
+                // Add to total
+                total += subtotal;
             });
             
             // Update cart total in the minimalistic header
-            document.getElementById('cart-total').textContent = '$' + total.toFixed(2);
+            const cartTotalElement = document.getElementById('cart-total');
+            if (cartTotalElement) {
+                cartTotalElement.textContent = '$' + total.toFixed(2);
+            }
         }
         
         // Repeat button functionality
