@@ -214,23 +214,24 @@ def create_app(test_config=None):
                         # Update price if custom price is provided
                         if form.custom_price.data:
                             item['price'] = price
+                        # Calculate and store subtotal
+                        item['subtotal'] = item['price'] * item['quantity']
                         session['cart'] = cart
                         flash(f'Updated quantity for {product.name}', 'success')
                         return redirect(url_for('new_transaction'))
                 
+                # Add new item to cart with subtotal
                 cart.append({
                     'product_id': product.id,
                     'name': product.name,
                     'price': price,
                     'quantity': form.quantity.data,
+                    'subtotal': price * form.quantity.data,  # Calculate and store subtotal
                     'is_custom_price': True if form.custom_price.data else False
                 })
                 session['cart'] = cart
                 flash(f'Added {product.name} to cart', 'success')
                 return redirect(url_for('new_transaction'))
-        
-        cart = session.get('cart', [])
-        total = sum(item['price'] * item['quantity'] for item in cart)
         
         # Get quick access products
         quick_access_products = []
@@ -964,15 +965,19 @@ def create_app(test_config=None):
         for item in cart:
             if item['product_id'] == product.id:
                 item['quantity'] += 1  # Add one by default
+                # Calculate and store subtotal
+                item['subtotal'] = item['price'] * item['quantity']
                 session['cart'] = cart
                 flash(f'Updated quantity for {product.name}', 'success')
                 return redirect(url_for('new_transaction'))
         
+        # Add new item to cart with subtotal
         cart.append({
             'product_id': product.id,
             'name': product.name,
             'price': product.price,
-            'quantity': 1  # Add one by default
+            'quantity': 1,  # Add one by default
+            'subtotal': product.price * 1  # Calculate and store subtotal
         })
         session['cart'] = cart
         flash(f'Added {product.name} to cart', 'success')
