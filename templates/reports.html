@@ -53,5 +53,26 @@
             </div>
         </div>
     </div>
+
+    <div class="row">
+        <div class="col-md-6 mb-4">
+            <div class="card h-100">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0">Daily Reports</h5>
+                </div>
+                <div class="card-body">
+                    <p>Manage daily store operations including cash balances, sales breakdowns, and lottery transactions.</p>
+                    <div class="d-grid gap-2">
+                        <a href="{{ url_for('daily_reports') }}" class="btn btn-info">
+                            <i class="bi bi-journal-text me-1"></i> View Daily Reports
+                        </a>
+                        <a href="{{ url_for('new_daily_report') }}" class="btn btn-outline-info">
+                            <i class="bi bi-plus-circle me-1"></i> Create New Report
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 {% endblock %} 

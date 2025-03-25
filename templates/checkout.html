@@ -45,6 +45,12 @@
                                     <th colspan="3" class="text-end">Subtotal:</th>
                                     <th>${{ "%.2f"|format(subtotal) }}</th>
                                 </tr>
+                                {% if gst_amount > 0 %}
+                                <tr>
+                                    <td colspan="3" class="text-end">GST (13%):</td>
+                                    <td>${{ "%.2f"|format(gst_amount) }}</td>
+                                </tr>
+                                {% endif %}
                                 <tr id="discount-row" style="display: none;">
                                     <td colspan="3" class="text-end">Discount:</td>
                                     <td id="discount-display">$0.00</td>

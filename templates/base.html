@@ -144,6 +144,9 @@
                     <a href="{{ url_for('manage_quick_access') }}" class="list-group-item list-group-item-action {% if request.path == url_for('manage_quick_access') %}active{% endif %}">
                         <i class="bi bi-grid me-2"></i> Quick Access Products
                     </a>
+                    <a href="{{ url_for('daily_reports') }}" class="list-group-item list-group-item-action {% if request.path == url_for('daily_reports') %}active{% endif %}">
+                        <i class="bi bi-journal-text me-2"></i> Daily Reports
+                    </a>
                     <a href="{{ url_for('reports') }}" class="list-group-item list-group-item-action {% if request.path == url_for('reports') %}active{% endif %}">
                         <i class="bi bi-graph-up me-2"></i> Reports
                     </a>

@@ -32,6 +32,14 @@
                         </div>
                         {% if current_user.role == 'manager' %}
                         <div class="col-md-6 mb-3">
+                            <a href="{{ url_for('daily_reports') }}" class="btn btn-info btn-lg w-100 h-100 d-flex align-items-center justify-content-center">
+                                <div class="text-center">
+                                    <i class="bi bi-journal-text fs-1"></i>
+                                    <p class="mb-0 mt-2">Daily Reports</p>
+                                </div>
+                            </a>
+                        </div>
+                        <div class="col-md-6 mb-3">
                             <a href="{{ url_for('products') }}" class="btn btn-info btn-lg w-100 h-100 d-flex align-items-center justify-content-center">
                                 <div class="text-center">
                                     <i class="bi bi-box-seam fs-1"></i>

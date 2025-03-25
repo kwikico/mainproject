@@ -7,36 +7,21 @@ from datetime import datetime, timedelta
 import csv
 from io import StringIO
 
-from models import db, User, Product, Transaction, TransactionItem, QuickAccessProduct
+from models import db, User, Product, Transaction, TransactionItem, QuickAccessProduct, DailyReport, LotteryTransaction, CashTransaction
 from forms import (
     LoginForm, ProductForm, TransactionItemForm, PaymentForm,
     ReturnForm, ReturnItemForm, UserForm, QuickAddForm, ProductSearchForm,
-    QuickAccessProductForm, CustomProductForm
+    QuickAccessProductForm, CustomProductForm, DailyReportForm, LotteryTransactionForm, CashTransactionForm
 )
+from config import config
 
-def create_app(test_config=None):
+def create_app(config_name='default'):
     # Create and configure the app
     app = Flask(__name__, instance_relative_config=True)
     
-    # Configure database URI based on environment
-    database_url = os.environ.get('DATABASE_URL')
-    if database_url and database_url.startswith('postgres://'):
-        # Heroku uses postgres:// but SQLAlchemy requires postgresql://
-        database_url = database_url.replace('postgres://', 'postgresql://', 1)
+    # Load the config
+    app.config.from_object(config[config_name])
     
-    app.config.from_mapping(
-        SECRET_KEY=os.environ.get('SECRET_KEY', 'dev'),
-        SQLALCHEMY_DATABASE_URI=database_url or 'sqlite:///' + os.path.join(app.instance_path, 'pos.sqlite'),
-        SQLALCHEMY_TRACK_MODIFICATIONS=False,
-    )
-
-    if test_config is None:
-        # Load the instance config, if it exists, when not testing
-        app.config.from_pyfile('config.py', silent=True)
-    else:
-        # Load the test config if passed in
-        app.config.from_mapping(test_config)
-
     # Ensure the instance folder exists
     try:
         os.makedirs(app.instance_path)
@@ -254,9 +239,20 @@ def create_app(test_config=None):
         if 'last_transaction_id' in session and not cart:
             last_transaction = Transaction.query.get(session['last_transaction_id'])
         
-        return render_template('new_transaction.html', form=form, cart=cart, total=total, 
-                              search_form=search_form, quick_access_products=quick_access_products,
-                              last_transaction=last_transaction)
+        # Calculate totals including GST
+        total = sum(item['price'] * item['quantity'] for item in cart)
+        gst_applied = session.get('apply_gst', True)  # Default to True
+        gst_amount = total * 0.13 if gst_applied else 0
+        
+        return render_template('new_transaction.html',
+                             form=form,
+                             cart=cart,
+                             total=total,
+                             gst_applied=gst_applied,
+                             gst_amount=gst_amount,
+                             search_form=search_form,
+                             quick_access_products=quick_access_products,
+                             last_transaction=last_transaction)
 
     @app.route('/transactions/quick_add', methods=['GET', 'POST'])
     @login_required
@@ -450,61 +446,49 @@ def create_app(test_config=None):
             amount_tendered = form.amount_tendered.data
             discount_amount = form.discount_amount.data or 0
             
-            # Calculate total
+            # Calculate totals including GST
             subtotal = sum(item['price'] * item['quantity'] for item in cart)
-            total_amount = subtotal - discount_amount
+            gst_applied = session.get('apply_gst', True)
+            gst_amount = subtotal * 0.13 if gst_applied else 0
+            total_amount = subtotal + gst_amount - discount_amount
             
             if amount_tendered < total_amount:
                 flash('Amount tendered must be at least equal to the total amount.', 'danger')
-                return render_template('checkout.html', cart=cart, form=form, subtotal=subtotal, total=total_amount)
+                return render_template('checkout.html', 
+                                    cart=cart, 
+                                    form=form, 
+                                    subtotal=subtotal,
+                                    gst_amount=gst_amount,
+                                    total=total_amount)
             
             # Create transaction
             transaction = Transaction(
                 total_amount=total_amount,
                 payment_method=payment_method,
                 user_id=current_user.id,
-                discount_amount=discount_amount
+                discount_amount=discount_amount,
+                gst_amount=gst_amount,
+                gst_applied=gst_applied
             )
-            db.session.add(transaction)
-            db.session.flush()  # Get transaction ID without committing
             
-            # Add transaction items
+            # Add items to transaction
             for item in cart:
-                if item.get('is_custom_product', False):
-                    # Custom product (not in inventory)
-                    transaction_item = TransactionItem(
-                        transaction_id=transaction.id,
-                        quantity=item['quantity'],
-                        price_at_time_of_sale=item['price'],
-                        custom_name=item['name'],
-                        is_custom_product=True
-                    )
-                    db.session.add(transaction_item)
-                else:
-                    # Regular product
-                    product_id = item['product_id']
-                    product = Product.query.get(product_id)
-                    
+                transaction_item = TransactionItem(
+                    product_id=item['product_id'] if not item.get('is_custom_product') else None,
+                    quantity=item['quantity'],
+                    price_at_time_of_sale=item['price'],
+                    custom_name=item.get('name') if item.get('is_custom_product') else None,
+                    is_custom_product=item.get('is_custom_product', False)
+                )
+                transaction.items.append(transaction_item)
+                
+                # Update product quantity if not a custom product
+                if not item.get('is_custom_product'):
+                    product = Product.query.get(item['product_id'])
                     if product:
-                        # Update inventory
-                        if product.quantity >= item['quantity']:
-                            product.quantity -= item['quantity']
-                            
-                            # Create transaction item
-                            transaction_item = TransactionItem(
-                                transaction_id=transaction.id,
-                                product_id=product_id,
-                                quantity=item['quantity'],
-                                price_at_time_of_sale=item['price'],
-                                is_custom_product=False
-                            )
-                            db.session.add(transaction_item)
-                        else:
-                            db.session.rollback()
-                            flash(f'Not enough stock for {product.name}. Only {product.quantity} available.', 'danger')
-                            return render_template('checkout.html', cart=cart, form=form, subtotal=subtotal, total=total_amount)
+                        product.quantity -= item['quantity']
             
-            # Commit transaction
+            db.session.add(transaction)
             db.session.commit()
             
             # Store the transaction ID in the session for history display
@@ -512,20 +496,29 @@ def create_app(test_config=None):
             
             # Clear cart
             session.pop('cart', None)
+            session.pop('apply_gst', None)
             
             # Calculate change
             change = amount_tendered - total_amount
             
             return render_template('receipt.html', 
-                                  transaction=transaction, 
-                                  payment_method=payment_method,
-                                  amount_tendered=amount_tendered,
-                                  change=change)
+                                transaction=transaction, 
+                                payment_method=payment_method,
+                                amount_tendered=amount_tendered,
+                                change=change)
         
-        # Calculate totals
+        # Calculate totals for initial page load
         subtotal = sum(item['price'] * item['quantity'] for item in cart)
+        gst_applied = session.get('apply_gst', True)
+        gst_amount = subtotal * 0.13 if gst_applied else 0
+        total = subtotal + gst_amount
         
-        return render_template('checkout.html', cart=cart, form=form, subtotal=subtotal, total=subtotal)
+        return render_template('checkout.html', 
+                             cart=cart, 
+                             form=form, 
+                             subtotal=subtotal,
+                             gst_amount=gst_amount,
+                             total=total)
 
     # Returns routes
     @app.route('/returns', methods=['GET', 'POST'])
@@ -1053,6 +1046,152 @@ def create_app(test_config=None):
     def count_low_stock(products):
         """Count products where quantity is less than or equal to low_stock_threshold"""
         return sum(1 for p in products if p.quantity <= p.low_stock_threshold)
+
+    @app.route('/reports/daily', methods=['GET'])
+    @login_required
+    def daily_reports():
+        reports = DailyReport.query.order_by(DailyReport.date.desc()).all()
+        return render_template('reports/daily_reports.html', reports=reports)
+
+    @app.route('/reports/daily/new', methods=['GET', 'POST'])
+    @login_required
+    def new_daily_report():
+        form = DailyReportForm()
+        if form.validate_on_submit():
+            report = DailyReport(
+                date=datetime.strptime(form.date.data, '%Y-%m-%d').date(),
+                opening_cash_balance=form.opening_cash_balance.data,
+                closing_cash_balance=form.closing_cash_balance.data,
+                cash_sales=form.cash_sales.data,
+                card_sales=form.card_sales.data,
+                lottery_sales=form.lottery_sales.data,
+                confectionery_sales=form.confectionery_sales.data,
+                tobacco_sales=form.tobacco_sales.data,
+                lottery_payouts=form.lottery_payouts.data,
+                lottery_commission=form.lottery_commission.data,
+                restocking_costs=form.restocking_costs.data,
+                miscellaneous_expenses=form.miscellaneous_expenses.data,
+                cash_deposits=form.cash_deposits.data,
+                notes=form.notes.data,
+                created_by=current_user.id
+            )
+            db.session.add(report)
+            db.session.commit()
+            flash('Daily report created successfully!', 'success')
+            return redirect(url_for('daily_reports'))
+        return render_template('reports/new_daily_report.html', form=form)
+
+    @app.route('/reports/daily/<int:id>', methods=['GET'])
+    @login_required
+    def view_daily_report(id):
+        report = DailyReport.query.get_or_404(id)
+        return render_template('reports/view_daily_report.html', report=report)
+
+    @app.route('/reports/daily/<int:id>/lottery', methods=['GET', 'POST'])
+    @login_required
+    def add_lottery_transaction(id):
+        report = DailyReport.query.get_or_404(id)
+        form = LotteryTransactionForm()
+        if form.validate_on_submit():
+            transaction = LotteryTransaction(
+                transaction_type=form.transaction_type.data,
+                amount=form.amount.data,
+                ticket_number=form.ticket_number.data,
+                commission_rate=form.commission_rate.data,
+                commission_amount=(form.amount.data * form.commission_rate.data / 100),
+                daily_report_id=report.id,
+                created_by=current_user.id
+            )
+            db.session.add(transaction)
+            db.session.commit()
+            flash('Lottery transaction added successfully!', 'success')
+            return redirect(url_for('view_daily_report', id=report.id))
+        return render_template('reports/add_lottery_transaction.html', form=form, report=report)
+
+    @app.route('/reports/daily/<int:id>/cash', methods=['GET', 'POST'])
+    @login_required
+    def add_cash_transaction(id):
+        report = DailyReport.query.get_or_404(id)
+        form = CashTransactionForm()
+        if form.validate_on_submit():
+            transaction = CashTransaction(
+                transaction_type=form.transaction_type.data,
+                amount=form.amount.data,
+                description=form.description.data,
+                daily_report_id=report.id,
+                created_by=current_user.id
+            )
+            db.session.add(transaction)
+            db.session.commit()
+            flash('Cash transaction added successfully!', 'success')
+            return redirect(url_for('view_daily_report', id=report.id))
+        return render_template('reports/add_cash_transaction.html', form=form, report=report)
+
+    @app.route('/reports/daily/<int:id>/export')
+    @login_required
+    def export_daily_report(id):
+        report = DailyReport.query.get_or_404(id)
+        output = StringIO()
+        writer = csv.writer(output)
+        
+        # Write header
+        writer.writerow(['Daily Report - ' + report.date.strftime('%Y-%m-%d')])
+        writer.writerow([])
+        
+        # Write summary
+        writer.writerow(['Summary'])
+        writer.writerow(['Opening Cash Balance', report.opening_cash_balance])
+        writer.writerow(['Closing Cash Balance', report.closing_cash_balance])
+        writer.writerow(['Cash Sales', report.cash_sales])
+        writer.writerow(['Card Sales', report.card_sales])
+        writer.writerow(['Lottery Sales', report.lottery_sales])
+        writer.writerow(['Confectionery Sales', report.confectionery_sales])
+        writer.writerow(['Tobacco Sales', report.tobacco_sales])
+        writer.writerow(['Lottery Payouts', report.lottery_payouts])
+        writer.writerow(['Lottery Commission', report.lottery_commission])
+        writer.writerow(['Restocking Costs', report.restocking_costs])
+        writer.writerow(['Miscellaneous Expenses', report.miscellaneous_expenses])
+        writer.writerow(['Cash Deposits', report.cash_deposits])
+        writer.writerow(['Cash Shortage', report.cash_shortage])
+        writer.writerow(['Cash Overage', report.cash_overage])
+        writer.writerow([])
+        
+        # Write lottery transactions
+        writer.writerow(['Lottery Transactions'])
+        writer.writerow(['Type', 'Amount', 'Ticket Number', 'Commission Rate', 'Commission Amount'])
+        for transaction in report.lottery_transactions:
+            writer.writerow([
+                transaction.transaction_type,
+                transaction.amount,
+                transaction.ticket_number,
+                transaction.commission_rate,
+                transaction.commission_amount
+            ])
+        writer.writerow([])
+        
+        # Write cash transactions
+        writer.writerow(['Cash Transactions'])
+        writer.writerow(['Type', 'Amount', 'Description'])
+        for transaction in report.cash_transactions:
+            writer.writerow([
+                transaction.transaction_type,
+                transaction.amount,
+                transaction.description
+            ])
+        
+        output.seek(0)
+        return Response(
+            output,
+            mimetype='text/csv',
+            headers={'Content-Disposition': f'attachment; filename=daily_report_{report.date.strftime("%Y%m%d")}.csv'}
+        )
+
+    @app.route('/update_gst', methods=['POST'])
+    @login_required
+    def update_gst():
+        apply_gst = request.form.get('apply_gst') == 'true'
+        session['apply_gst'] = apply_gst
+        return jsonify({'success': True})
 
     return app
 

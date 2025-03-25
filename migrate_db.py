@@ -1,11 +1,9 @@
-from app import create_app
-from models import db
+from app import create_app, db
+from models import User, Product, Transaction, TransactionItem, QuickAccessProduct, DailyReport, LotteryTransaction, CashTransaction
 
 app = create_app()
 
 with app.app_context():
-    print("Dropping all tables...")
-    db.drop_all()
-    print("Creating all tables...")
+    # Create all tables
     db.create_all()
-    print("Database migration completed successfully!") 
+    print("Database tables created successfully!") 

@@ -102,4 +102,38 @@ class CustomProductForm(FlaskForm):
 
     def validate_price(self, field):
         if field.data <= 0:
-            raise ValidationError('Price must be greater than 0.') 
+            raise ValidationError('Price must be greater than 0.')
+
+class DailyReportForm(FlaskForm):
+    date = StringField('Date', validators=[DataRequired()])
+    opening_cash_balance = FloatField('Opening Cash Balance', validators=[DataRequired(), NumberRange(min=0)])
+    closing_cash_balance = FloatField('Closing Cash Balance', validators=[DataRequired(), NumberRange(min=0)])
+    cash_sales = FloatField('Cash Sales', validators=[DataRequired(), NumberRange(min=0)])
+    card_sales = FloatField('Card Sales', validators=[DataRequired(), NumberRange(min=0)])
+    lottery_sales = FloatField('Lottery Sales', validators=[DataRequired(), NumberRange(min=0)])
+    confectionery_sales = FloatField('Confectionery Sales', validators=[DataRequired(), NumberRange(min=0)])
+    tobacco_sales = FloatField('Tobacco Sales', validators=[DataRequired(), NumberRange(min=0)])
+    lottery_payouts = FloatField('Lottery Payouts', validators=[DataRequired(), NumberRange(min=0)])
+    lottery_commission = FloatField('Lottery Commission', validators=[DataRequired(), NumberRange(min=0)])
+    restocking_costs = FloatField('Restocking Costs', validators=[DataRequired(), NumberRange(min=0)])
+    miscellaneous_expenses = FloatField('Miscellaneous Expenses', validators=[DataRequired(), NumberRange(min=0)])
+    cash_deposits = FloatField('Cash Deposits', validators=[DataRequired(), NumberRange(min=0)])
+    notes = StringField('Notes', validators=[Optional()])
+    submit = SubmitField('Save Daily Report')
+
+class LotteryTransactionForm(FlaskForm):
+    transaction_type = SelectField('Transaction Type', choices=[('sale', 'Sale'), ('payout', 'Payout')], validators=[DataRequired()])
+    amount = FloatField('Amount', validators=[DataRequired(), NumberRange(min=0)])
+    ticket_number = StringField('Ticket Number', validators=[Optional()])
+    commission_rate = FloatField('Commission Rate (%)', validators=[DataRequired(), NumberRange(min=0, max=100)])
+    submit = SubmitField('Add Lottery Transaction')
+
+class CashTransactionForm(FlaskForm):
+    transaction_type = SelectField('Transaction Type', choices=[
+        ('deposit', 'Deposit'),
+        ('withdrawal', 'Withdrawal'),
+        ('expense', 'Expense')
+    ], validators=[DataRequired()])
+    amount = FloatField('Amount', validators=[DataRequired(), NumberRange(min=0)])
+    description = StringField('Description', validators=[DataRequired()])
+    submit = SubmitField('Add Cash Transaction') 

@@ -1,0 +1,224 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1 class="mb-4">New Daily Report</h1>
+
+    <form method="POST" class="needs-validation" novalidate>
+        {{ form.csrf_token }}
+        
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">Basic Information</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            {{ form.date.label(class="form-label") }}
+                            {{ form.date(class="form-control", type="date") }}
+                            {% if form.date.errors %}
+                            <div class="invalid-feedback d-block">
+                                {% for error in form.date.errors %}
+                                {{ error }}
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                        </div>
+
+                        <div class="mb-3">
+                            {{ form.opening_cash_balance.label(class="form-label") }}
+                            {{ form.opening_cash_balance(class="form-control") }}
+                            {% if form.opening_cash_balance.errors %}
+                            <div class="invalid-feedback d-block">
+                                {% for error in form.opening_cash_balance.errors %}
+                                {{ error }}
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                        </div>
+
+                        <div class="mb-3">
+                            {{ form.closing_cash_balance.label(class="form-label") }}
+                            {{ form.closing_cash_balance(class="form-control") }}
+                            {% if form.closing_cash_balance.errors %}
+                            <div class="invalid-feedback d-block">
+                                {% for error in form.closing_cash_balance.errors %}
+                                {{ error }}
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-6">
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">Sales Breakdown</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            {{ form.cash_sales.label(class="form-label") }}
+                            {{ form.cash_sales(class="form-control") }}
+                            {% if form.cash_sales.errors %}
+                            <div class="invalid-feedback d-block">
+                                {% for error in form.cash_sales.errors %}
+                                {{ error }}
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                        </div>
+
+                        <div class="mb-3">
+                            {{ form.card_sales.label(class="form-label") }}
+                            {{ form.card_sales(class="form-control") }}
+                            {% if form.card_sales.errors %}
+                            <div class="invalid-feedback d-block">
+                                {% for error in form.card_sales.errors %}
+                                {{ error }}
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                        </div>
+
+                        <div class="mb-3">
+                            {{ form.lottery_sales.label(class="form-label") }}
+                            {{ form.lottery_sales(class="form-control") }}
+                            {% if form.lottery_sales.errors %}
+                            <div class="invalid-feedback d-block">
+                                {% for error in form.lottery_sales.errors %}
+                                {{ error }}
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                        </div>
+
+                        <div class="mb-3">
+                            {{ form.confectionery_sales.label(class="form-label") }}
+                            {{ form.confectionery_sales(class="form-control") }}
+                            {% if form.confectionery_sales.errors %}
+                            <div class="invalid-feedback d-block">
+                                {% for error in form.confectionery_sales.errors %}
+                                {{ error }}
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                        </div>
+
+                        <div class="mb-3">
+                            {{ form.tobacco_sales.label(class="form-label") }}
+                            {{ form.tobacco_sales(class="form-control") }}
+                            {% if form.tobacco_sales.errors %}
+                            <div class="invalid-feedback d-block">
+                                {% for error in form.tobacco_sales.errors %}
+                                {{ error }}
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">Lottery & Expenses</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            {{ form.lottery_payouts.label(class="form-label") }}
+                            {{ form.lottery_payouts(class="form-control") }}
+                            {% if form.lottery_payouts.errors %}
+                            <div class="invalid-feedback d-block">
+                                {% for error in form.lottery_payouts.errors %}
+                                {{ error }}
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                        </div>
+
+                        <div class="mb-3">
+                            {{ form.lottery_commission.label(class="form-label") }}
+                            {{ form.lottery_commission(class="form-control") }}
+                            {% if form.lottery_commission.errors %}
+                            <div class="invalid-feedback d-block">
+                                {% for error in form.lottery_commission.errors %}
+                                {{ error }}
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                        </div>
+
+                        <div class="mb-3">
+                            {{ form.restocking_costs.label(class="form-label") }}
+                            {{ form.restocking_costs(class="form-control") }}
+                            {% if form.restocking_costs.errors %}
+                            <div class="invalid-feedback d-block">
+                                {% for error in form.restocking_costs.errors %}
+                                {{ error }}
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                        </div>
+
+                        <div class="mb-3">
+                            {{ form.miscellaneous_expenses.label(class="form-label") }}
+                            {{ form.miscellaneous_expenses(class="form-control") }}
+                            {% if form.miscellaneous_expenses.errors %}
+                            <div class="invalid-feedback d-block">
+                                {% for error in form.miscellaneous_expenses.errors %}
+                                {{ error }}
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-6">
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">Cash Management</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            {{ form.cash_deposits.label(class="form-label") }}
+                            {{ form.cash_deposits(class="form-control") }}
+                            {% if form.cash_deposits.errors %}
+                            <div class="invalid-feedback d-block">
+                                {% for error in form.cash_deposits.errors %}
+                                {{ error }}
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                        </div>
+
+                        <div class="mb-3">
+                            {{ form.notes.label(class="form-label") }}
+                            {{ form.notes(class="form-control", rows="4") }}
+                            {% if form.notes.errors %}
+                            <div class="invalid-feedback d-block">
+                                {% for error in form.notes.errors %}
+                                {{ error }}
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="d-flex justify-content-between">
+            <a href="{{ url_for('daily_reports') }}" class="btn btn-secondary">Cancel</a>
+            {{ form.submit(class="btn btn-primary") }}
+        </div>
+    </form>
+</div>
+{% endblock %} 
