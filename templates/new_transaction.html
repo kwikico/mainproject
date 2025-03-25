@@ -147,16 +147,11 @@
                                         <td colspan="2">${{ "%.2f"|format(total) }}</td>
                                     </tr>
                                     <tr>
-                                        <td colspan="3" class="text-end">
-                                            <div class="form-check form-switch d-flex justify-content-end align-items-center">
-                                                <input class="form-check-input me-2" type="checkbox" id="gstToggle" name="apply_gst" {% if gst_applied %}checked{% endif %}>
-                                                <label class="form-check-label" for="gstToggle">Apply GST (13%)</label>
-                                            </div>
-                                        </td>
+                                        <td colspan="3" class="text-end">GST (13%):</td>
                                         <td colspan="2" id="gstAmount">${{ "%.2f"|format(gst_amount) }}</td>
                                     </tr>
                                     <tr class="table-primary">
-                                        <th colspan="3" class="text-end">Total with GST:</th>
+                                        <th colspan="3" class="text-end">Total:</th>
                                         <th colspan="2" id="totalWithGst">${{ "%.2f"|format(total + gst_amount) }}</th>
                                     </tr>
                                 </tfoot>
@@ -1125,105 +1120,5 @@
             return jQuery(a).text().toUpperCase().indexOf(m[3].toUpperCase()) >= 0;
         };
     });
-
-    // GST Handling
-    document.addEventListener('DOMContentLoaded', function() {
-        const gstToggle = document.getElementById('gstToggle');
-        const gstAmountDisplay = document.getElementById('gstAmount');
-        const totalWithGstDisplay = document.getElementById('totalWithGst');
-        const cartTotalDisplay = document.getElementById('cart-total');
-        const subtotalDisplay = document.querySelector('tr:has(td:contains("Subtotal:")) td:last-child');
-        
-        if (!gstToggle) return; // Exit if toggle doesn't exist
-        
-        // Function to update all displays with new values
-        function updateDisplays(data) {
-            // Update GST amount display
-            gstAmountDisplay.textContent = '$' + data.gst_amount.toFixed(2);
-            
-            // Update total displays
-            totalWithGstDisplay.textContent = '$' + data.total.toFixed(2);
-            cartTotalDisplay.textContent = '$' + data.total.toFixed(2);
-            
-            // Show/hide GST row based on toggle state
-            const gstRow = gstAmountDisplay.closest('tr');
-            gstRow.style.display = data.apply_gst ? '' : 'none';
-            
-            // Add animation to show changes
-            [gstAmountDisplay, totalWithGstDisplay, cartTotalDisplay].forEach(element => {
-                element.classList.add('highlight-update');
-                setTimeout(() => {
-                    element.classList.remove('highlight-update');
-                }, 1000);
-            });
-        }
-        
-        gstToggle.addEventListener('change', function() {
-            const formData = new FormData();
-            formData.append('apply_gst', this.checked);
-            
-            // Get CSRF token
-            const csrfToken = document.querySelector('input[name="csrf_token"]').value;
-            
-            // Show loading state
-            gstAmountDisplay.innerHTML = '<small class="text-muted">Updating...</small>';
-            totalWithGstDisplay.innerHTML = '<small class="text-muted">Calculating...</small>';
-            
-            // Send AJAX request to update GST status
-            fetch('/update_gst', {
-                method: 'POST',
-                headers: {
-                    'X-CSRFToken': csrfToken
-                },
-                body: formData
-            })
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error('Network response was not ok');
-                }
-                return response.json();
-            })
-            .then(data => {
-                if (data.success) {
-                    // Update all displays with new values
-                    updateDisplays(data);
-                    
-                    // Update the checkbox state to match server
-                    gstToggle.checked = data.apply_gst;
-                } else {
-                    throw new Error('Server returned error');
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                // Revert toggle state on error
-                gstToggle.checked = !gstToggle.checked;
-                // Show error message
-                alert('Failed to update GST settings. Please try again.');
-                
-                // Reset displays
-                gstAmountDisplay.textContent = gstAmountDisplay.getAttribute('data-original-value') || '$0.00';
-                totalWithGstDisplay.textContent = totalWithGstDisplay.getAttribute('data-original-value') || '$0.00';
-            });
-        });
-        
-        // Store original values for error recovery
-        gstAmountDisplay.setAttribute('data-original-value', gstAmountDisplay.textContent);
-        totalWithGstDisplay.setAttribute('data-original-value', totalWithGstDisplay.textContent);
-    });
-
-    // Add CSS for highlight animation
-    const style = document.createElement('style');
-    style.textContent = `
-        .highlight-update {
-            animation: highlightUpdate 1s ease-in-out;
-        }
-        
-        @keyframes highlightUpdate {
-            0% { background-color: rgba(255, 255, 0, 0.3); }
-            100% { background-color: transparent; }
-        }
-    `;
-    document.head.appendChild(style);
 </script>
 {% endblock %} 

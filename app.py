@@ -273,12 +273,11 @@ def create_app(test_config=None):
         # Calculate subtotal first
         subtotal = sum(item['price'] * item['quantity'] for item in cart)
         
-        # Calculate GST only once (13% of subtotal)
-        gst_applied = session.get('apply_gst', True)  # Default to True
-        gst_amount = round(subtotal * 0.13, 2) if gst_applied else 0
+        # Calculate GST (13% of subtotal)
+        gst_amount = round(subtotal * 0.13, 2)
         
         # Calculate total after GST
-        total = round(subtotal + gst_amount, 2)
+        total = subtotal
         
         # Get last transaction for history display
         last_transaction = None
@@ -292,7 +291,6 @@ def create_app(test_config=None):
                              cart=cart,
                              subtotal=subtotal,
                              total=total,
-                             gst_applied=gst_applied,
                              gst_amount=gst_amount,
                              search_form=search_form,
                              quick_access_products=quick_access_list,
@@ -516,10 +514,9 @@ def create_app(test_config=None):
         
         form = PaymentForm()
         
-        # Calculate totals including GST once
+        # Calculate totals including GST
         subtotal = sum(item['price'] * item['quantity'] for item in cart)
-        gst_applied = session.get('apply_gst', True)
-        gst_amount = round(subtotal * 0.13, 2) if gst_applied else 0
+        gst_amount = round(subtotal * 0.13, 2)
         total_amount = round(subtotal + gst_amount, 2)
         
         if form.validate_on_submit():
@@ -546,7 +543,7 @@ def create_app(test_config=None):
                 user_id=current_user.id,
                 discount_amount=discount_amount,
                 gst_amount=gst_amount,
-                gst_applied=gst_applied
+                gst_applied=True
             )
             
             # Prepare all items and product updates in memory
@@ -583,7 +580,6 @@ def create_app(test_config=None):
                 # Store the transaction ID and clear cart only after successful commit
                 session['last_transaction_id'] = transaction.id
                 session.pop('cart', None)
-                session.pop('apply_gst', None)
                 
                 # Calculate change
                 change = amount_tendered - final_total
@@ -1271,35 +1267,6 @@ def create_app(test_config=None):
             mimetype='text/csv',
             headers={'Content-Disposition': f'attachment; filename=daily_report_{report.date.strftime("%Y%m%d")}.csv'}
         )
-
-    @app.route('/update_gst', methods=['POST'])
-    @login_required
-    def update_gst():
-        # Get the apply_gst value from the form data
-        apply_gst = request.form.get('apply_gst', 'false').lower() == 'true'
-        
-        # Store in session
-        session['apply_gst'] = apply_gst
-        
-        # Calculate totals
-        cart = session.get('cart', [])
-        
-        # Calculate pure subtotal (without GST)
-        subtotal = sum(item['price'] * item['quantity'] for item in cart)
-        
-        # Calculate GST only if toggle is ON
-        gst_amount = round(subtotal * 0.13, 2) if apply_gst else 0
-        
-        # Calculate final total (subtotal + GST if applicable)
-        total = round(subtotal + gst_amount, 2)
-        
-        return jsonify({
-            'success': True,
-            'subtotal': subtotal,
-            'gst_amount': gst_amount,
-            'total': total,
-            'apply_gst': apply_gst
-        })
 
     return app
 
