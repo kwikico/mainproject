@@ -219,7 +219,7 @@
                         </div>
                         
                         <div class="numeric-keypad">
-                            <div id="keypad-title" class="text-center mb-1 fw-bold">Numpad</div>
+                            <div id="keypad-title" class="text-center mb-2 fw-bold keypad-title">Numpad</div>
                             <div class="keypad-row">
                                 <button class="keypad-btn" data-value="7">7</button>
                                 <button class="keypad-btn" data-value="8">8</button>
@@ -255,9 +255,10 @@
                                 <i class="bi bi-trash me-1"></i> CLEAR CART
                             </a>
                             
-                            <button class="control-btn clear-btn mb-2" id="clear-btn">CLEAR</button>
-                            <button class="control-btn confirm-btn mb-2" id="confirm-btn" style="display: none;">CONFIRM</button>
-                            <button class="control-btn repeat-btn" id="repeat-btn">REPEAT</button>
+                            <button class="control-btn clear-btn mb-3" id="clear-btn">CLEAR</button>
+                            <button class="control-btn confirm-btn" id="confirm-btn" style="display: none;">
+                                <i class="bi bi-check-lg me-1"></i> CONFIRM
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -406,6 +407,32 @@
         transform: scale(0.95);
     }
     
+    .keypad-title {
+        padding: 5px;
+        border-radius: 4px;
+        background-color: #f8f9fa;
+        border: 1px solid #dee2e6;
+        transition: all 0.3s ease;
+    }
+    
+    .keypad-title.edit-mode {
+        background-color: #0d6efd;
+        color: white;
+        animation: pulse 2s infinite;
+    }
+    
+    @keyframes pulse {
+        0% {
+            box-shadow: 0 0 0 0 rgba(13, 110, 253, 0.4);
+        }
+        70% {
+            box-shadow: 0 0 0 10px rgba(13, 110, 253, 0);
+        }
+        100% {
+            box-shadow: 0 0 0 0 rgba(13, 110, 253, 0);
+        }
+    }
+    
     .control-buttons {
         flex: 1;
         display: flex;
@@ -465,14 +492,42 @@
         color: white;
     }
     
-    .repeat-btn {
-        background-color: #ffc107;
-        color: #212529;
-    }
-    
     .confirm-btn {
         background-color: #0d6efd;
         color: white;
+        z-index: 100;  /* Ensure button is above other elements */
+        position: relative;  /* Required for z-index to work properly */
+        font-size: 1.1rem;
+        height: 45px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        transition: all 0.3s ease;
+        animation: pulse-highlight 1.5s infinite;
+    }
+    
+    @keyframes pulse-highlight {
+        0% {
+            box-shadow: 0 0 0 0 rgba(13, 110, 253, 0.7);
+        }
+        70% {
+            box-shadow: 0 0 0 10px rgba(13, 110, 253, 0);
+        }
+        100% {
+            box-shadow: 0 0 0 0 rgba(13, 110, 253, 0);
+        }
+    }
+    
+    .confirm-btn:hover {
+        background-color: #0b5ed7;
+        transform: translateY(-2px);
+        box-shadow: 0 6px 8px rgba(0, 0, 0, 0.15);
+    }
+    
+    .confirm-btn:active {
+        transform: translateY(1px);
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     }
     
     .cart-items-container {
@@ -504,7 +559,32 @@
     }
     
     .price-cell.selected, .quantity-cell.selected {
-        background-color: rgba(0, 123, 255, 0.2);
+        background-color: rgba(13, 110, 253, 0.15);
+        box-shadow: inset 0 0 0 2px #0d6efd;
+        position: relative;
+        border-radius: 4px;
+    }
+    
+    .price-cell.selected::after, .quantity-cell.selected::after {
+        content: "Double-click to edit";
+        position: absolute;
+        bottom: -20px;
+        left: 50%;
+        transform: translateX(-50%);
+        background-color: #0d6efd;
+        color: white;
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-size: 10px;
+        white-space: nowrap;
+        z-index: 100;
+        opacity: 0;
+        animation: fadeIn 0.5s ease forwards;
+    }
+    
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
     }
     
     .original-price {
@@ -553,7 +633,6 @@
         let currentInput = '';
         const confirmBtn = document.getElementById('confirm-btn');
         const clearBtn = document.getElementById('clear-btn');
-        const repeatBtn = document.getElementById('repeat-btn');
         const keypadButtons = document.querySelectorAll('.keypad-btn');
         const keypadTitle = document.getElementById('keypad-title');
         
@@ -563,7 +642,9 @@
         
         // Handle price cell double-click
         priceCells.forEach(cell => {
-            cell.addEventListener('dblclick', function() {
+            cell.addEventListener('dblclick', function(event) {
+                event.stopPropagation(); // Prevent event from bubbling up
+                
                 // Deselect any previously selected field
                 if (selectedField) {
                     selectedField.classList.remove('selected');
@@ -576,19 +657,28 @@
                 
                 // Update keypad title
                 keypadTitle.textContent = 'Edit Price';
+                keypadTitle.classList.add('edit-mode');
                 
-                // Show confirm button, hide repeat button
+                // Show confirm button and ensure it's visible
                 confirmBtn.style.display = 'block';
-                repeatBtn.style.display = 'none';
                 
                 // Reset current input
                 currentInput = '';
+                
+                // Extract current price as starting point for editing
+                const currentPriceText = this.querySelector('.current-price').textContent;
+                currentInput = currentPriceText.replace('$', '');
+                
+                // Scroll to ensure the keypad and confirm button are visible
+                confirmBtn.scrollIntoView({behavior: 'smooth', block: 'nearest'});
             });
         });
         
         // Handle quantity cell double-click
         quantityCells.forEach(cell => {
-            cell.addEventListener('dblclick', function() {
+            cell.addEventListener('dblclick', function(event) {
+                event.stopPropagation(); // Prevent event from bubbling up
+                
                 // Deselect any previously selected field
                 if (selectedField) {
                     selectedField.classList.remove('selected');
@@ -601,13 +691,20 @@
                 
                 // Update keypad title
                 keypadTitle.textContent = 'Edit Quantity';
+                keypadTitle.classList.add('edit-mode');
                 
-                // Show confirm button, hide repeat button
+                // Show confirm button and ensure it's visible
                 confirmBtn.style.display = 'block';
-                repeatBtn.style.display = 'none';
                 
                 // Reset current input
                 currentInput = '';
+                
+                // Extract current quantity as starting point for editing
+                const currentQuantityText = this.querySelector('.current-quantity').textContent;
+                currentInput = currentQuantityText;
+                
+                // Scroll to ensure the keypad and confirm button are visible
+                confirmBtn.scrollIntoView({behavior: 'smooth', block: 'nearest'});
             });
         });
         
@@ -623,6 +720,11 @@
                     return;
                 }
                 
+                // Clear input on first keypress if we're just starting to type
+                if (currentInput === selectedField.querySelector(selectedFieldType === 'price' ? '.current-price' : '.current-quantity').textContent.replace('$', '')) {
+                    currentInput = '';
+                }
+                
                 currentInput += value;
                 
                 if (selectedFieldType === 'price') {
@@ -635,9 +737,11 @@
                     
                     // Store original price if not already stored
                     const originalPriceElement = selectedField.querySelector('.original-price');
-                    if (!originalPriceElement.textContent) {
+                    if (!originalPriceElement || !originalPriceElement.textContent) {
                         const originalPrice = selectedField.getAttribute('data-original-price');
-                        originalPriceElement.textContent = 'Original: $' + parseFloat(originalPrice).toFixed(2);
+                        if (originalPriceElement) {
+                            originalPriceElement.textContent = 'Original: $' + parseFloat(originalPrice).toFixed(2);
+                        }
                     }
                 } else if (selectedFieldType === 'quantity') {
                     // Format and display the current input as quantity
@@ -647,6 +751,9 @@
                     // Display the new quantity
                     currentQuantityElement.textContent = formattedQuantity;
                 }
+                
+                // Make sure confirm button is shown
+                confirmBtn.style.display = 'block';
             });
         });
         
@@ -697,18 +804,34 @@
         }
         
         // Confirm button functionality
-        confirmBtn.addEventListener('click', function() {
-            if (!selectedField || !currentInput) return;
+        confirmBtn.addEventListener('click', function(event) {
+            console.log('Confirm button clicked');
+            event.preventDefault();
+            event.stopPropagation(); // Prevent event from bubbling up
+            
+            if (!selectedField) {
+                console.log('No field selected');
+                return;
+            }
+            
+            if (!currentInput) {
+                console.log('No input provided');
+                return;
+            }
             
             const productId = selectedField.getAttribute('data-product-id');
+            console.log('Product ID:', productId);
+            console.log('Field type:', selectedFieldType);
             
             if (selectedFieldType === 'price') {
                 const newPrice = parseFloat(currentInput);
+                console.log('New price:', newPrice);
                 
-                // Update the price in the cart via AJAX
+                // Update the price in the cart via form submission
                 updateProductPrice(productId, newPrice);
             } else if (selectedFieldType === 'quantity') {
                 const newQuantity = parseInt(currentInput);
+                console.log('New quantity:', newQuantity);
                 
                 // Update the quantity in the cart via form submission
                 updateProductQuantity(productId, newQuantity);
@@ -718,22 +841,50 @@
             resetFieldEditUI();
         });
         
+        // Add keyboard support for confirming with Enter key
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Enter' && selectedField && currentInput) {
+                console.log('Enter key pressed, confirming edit');
+                confirmBtn.click();
+            }
+        });
+        
         // Clear button functionality
         clearBtn.addEventListener('click', function() {
             if (selectedField) {
                 if (selectedFieldType === 'price') {
-                    // Reset price to original
+                    // First click should just clear the current input for a new entry
+                    if (currentInput && currentInput !== selectedField.getAttribute('data-original-price')) {
+                        // Reset just the current input without resetting in cart
+                        const currentPriceElement = selectedField.querySelector('.current-price');
+                        currentPriceElement.textContent = '$' + formatPrice('0');
+                        currentInput = '0';
+                        return;
+                    }
+                    
+                    // Second click should reset to original price
                     const originalPrice = selectedField.getAttribute('data-original-price');
                     const currentPriceElement = selectedField.querySelector('.current-price');
                     const originalPriceElement = selectedField.querySelector('.original-price');
                     
                     currentPriceElement.textContent = '$' + parseFloat(originalPrice).toFixed(2);
-                    originalPriceElement.textContent = '';
+                    if (originalPriceElement) {
+                        originalPriceElement.textContent = '';
+                    }
                     
                     // Reset price in the cart via AJAX
                     updateProductPrice(selectedField.getAttribute('data-product-id'), originalPrice);
                 } else if (selectedFieldType === 'quantity') {
-                    // Reset quantity to original
+                    // First click should just clear the current input for a new entry
+                    if (currentInput && currentInput !== selectedField.getAttribute('data-original-quantity')) {
+                        // Reset just the current input without resetting in cart
+                        const currentQuantityElement = selectedField.querySelector('.current-quantity');
+                        currentQuantityElement.textContent = '1';
+                        currentInput = '1';
+                        return;
+                    }
+                    
+                    // Second click should reset to original quantity
                     const originalQuantity = selectedField.getAttribute('data-original-quantity');
                     const currentQuantityElement = selectedField.querySelector('.current-quantity');
                     
@@ -761,61 +912,111 @@
             
             currentInput = '';
             confirmBtn.style.display = 'none';
-            repeatBtn.style.display = 'block';
             keypadTitle.textContent = 'Numpad';
+            keypadTitle.classList.remove('edit-mode');
             
             // Recalculate cart total
             recalculateCartTotal();
         }
         
-        // Update product price via AJAX
+        // Update product price via form submission
         function updateProductPrice(productId, newPrice) {
-            // Create a form to submit the price update
-            const form = document.createElement('form');
-            form.method = 'post';
-            form.action = '/update_price/' + productId;
-            form.style.display = 'none';
+            console.log(`Updating price for product ${productId} to ${newPrice}`);
             
-            const priceInput = document.createElement('input');
-            priceInput.type = 'hidden';
-            priceInput.name = 'price';
-            priceInput.value = newPrice;
-            
-            const csrfInput = document.createElement('input');
-            csrfInput.type = 'hidden';
-            csrfInput.name = 'csrf_token';
-            csrfInput.value = document.querySelector('input[name="csrf_token"]').value;
-            
-            form.appendChild(priceInput);
-            form.appendChild(csrfInput);
-            document.body.appendChild(form);
-            
-            form.submit();
+            try {
+                // Create a form to submit the price update
+                const form = document.createElement('form');
+                form.method = 'post';
+                form.action = '/update_price/' + productId;
+                form.style.display = 'none';
+                
+                const priceInput = document.createElement('input');
+                priceInput.type = 'hidden';
+                priceInput.name = 'price';
+                priceInput.value = newPrice;
+                form.appendChild(priceInput);
+                
+                // Try to get CSRF token from a meta tag first (more reliable)
+                let csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+                
+                // If no meta tag, try to find an input with csrf_token
+                if (!csrfToken) {
+                    const csrfInput = document.querySelector('input[name="csrf_token"]');
+                    if (csrfInput) {
+                        csrfToken = csrfInput.value;
+                    }
+                }
+                
+                if (csrfToken) {
+                    const csrfInput = document.createElement('input');
+                    csrfInput.type = 'hidden';
+                    csrfInput.name = 'csrf_token';
+                    csrfInput.value = csrfToken;
+                    form.appendChild(csrfInput);
+                } else {
+                    console.warn('CSRF token not found, form may fail to submit');
+                }
+                
+                document.body.appendChild(form);
+                
+                // Submit the form with slight delay to ensure it's fully appended to DOM
+                setTimeout(() => {
+                    form.submit();
+                }, 10);
+            } catch (error) {
+                console.error('Error updating price:', error);
+                alert('Failed to update price. Please try again.');
+            }
         }
         
         // Update product quantity via form submission
         function updateProductQuantity(productId, newQuantity) {
-            // Create a form to submit the quantity update
-            const form = document.createElement('form');
-            form.method = 'post';
-            form.action = '/update_quantity/' + productId;
-            form.style.display = 'none';
+            console.log(`Updating quantity for product ${productId} to ${newQuantity}`);
             
-            const quantityInput = document.createElement('input');
-            quantityInput.type = 'hidden';
-            quantityInput.name = 'quantity';
-            quantityInput.value = newQuantity;
-            
-            const csrfInput = document.createElement('input');
-            csrfInput.type = 'hidden';
-            csrfInput.name = 'csrf_token';
-            csrfInput.value = document.querySelector('input[name="csrf_token"]').value;
-            
-            form.appendChild(quantityInput);
-            form.appendChild(csrfInput);
-            document.body.appendChild(form);
-            
-            form.submit();
+            try {
+                // Create a form to submit the quantity update
+                const form = document.createElement('form');
+                form.method = 'post';
+                form.action = '/update_quantity/' + productId;
+                form.style.display = 'none';
+                
+                const quantityInput = document.createElement('input');
+                quantityInput.type = 'hidden';
+                quantityInput.name = 'quantity';
+                quantityInput.value = newQuantity;
+                form.appendChild(quantityInput);
+                
+                // Try to get CSRF token from a meta tag first (more reliable)
+                let csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+                
+                // If no meta tag, try to find an input with csrf_token
+                if (!csrfToken) {
+                    const csrfInput = document.querySelector('input[name="csrf_token"]');
+                    if (csrfInput) {
+                        csrfToken = csrfInput.value;
+                    }
+                }
+                
+                if (csrfToken) {
+                    const csrfInput = document.createElement('input');
+                    csrfInput.type = 'hidden';
+                    csrfInput.name = 'csrf_token';
+                    csrfInput.value = csrfToken;
+                    form.appendChild(csrfInput);
+                } else {
+                    console.warn('CSRF token not found, form may fail to submit');
+                }
+                
+                document.body.appendChild(form);
+                
+                // Submit the form with slight delay to ensure it's fully appended to DOM
+                setTimeout(() => {
+                    form.submit();
+                }, 10);
+            } catch (error) {
+                console.error('Error updating quantity:', error);
+                alert('Failed to update quantity. Please try again.');
+            }
         }
         
         // Recalculate cart total
@@ -830,12 +1031,6 @@
             // Update cart total in the minimalistic header
             document.getElementById('cart-total').textContent = '$' + total.toFixed(2);
         }
-        
-        // Repeat button functionality
-        document.querySelector('.repeat-btn').addEventListener('click', function() {
-            console.log('Repeat last action');
-            // Implement repeat functionality based on your requirements
-        });
         
         // Close edit mode when clicking outside
         document.addEventListener('click', function(event) {
