@@ -13,15 +13,30 @@ from forms import (
     ReturnForm, ReturnItemForm, UserForm, QuickAddForm, ProductSearchForm,
     QuickAccessProductForm, CustomProductForm, DailyReportForm, LotteryTransactionForm, CashTransactionForm
 )
-from config import config
 
-def create_app(config_name='default'):
+def create_app(test_config=None):
     # Create and configure the app
     app = Flask(__name__, instance_relative_config=True)
     
-    # Load the config
-    app.config.from_object(config[config_name])
+    # Configure database URI based on environment
+    database_url = os.environ.get('DATABASE_URL')
+    if database_url and database_url.startswith('postgres://'):
+        # Heroku uses postgres:// but SQLAlchemy requires postgresql://
+        database_url = database_url.replace('postgres://', 'postgresql://', 1)
     
+    app.config.from_mapping(
+        SECRET_KEY=os.environ.get('SECRET_KEY', 'dev'),
+        SQLALCHEMY_DATABASE_URI=database_url or 'sqlite:///' + os.path.join(app.instance_path, 'pos.sqlite'),
+        SQLALCHEMY_TRACK_MODIFICATIONS=False,
+    )
+
+    if test_config is None:
+        # Load the instance config, if it exists, when not testing
+        app.config.from_pyfile('config.py', silent=True)
+    else:
+        # Load the test config if passed in
+        app.config.from_mapping(test_config)
+
     # Ensure the instance folder exists
     try:
         os.makedirs(app.instance_path)
@@ -181,77 +196,106 @@ def create_app(config_name='default'):
     @app.route('/transactions/new', methods=['GET', 'POST'])
     @login_required
     def new_transaction():
+        cart = session.get('cart', [])
+        
+        # Get quick access products with a single query using join
+        quick_access_products = (QuickAccessProduct.query
+            .join(Product)
+            .filter(Product.quantity > 0)
+            .order_by(QuickAccessProduct.position)
+            .all())
+        
+        # Create a list of quick access positions with products
+        quick_access_list = []
+        current_position = 1
+        for qap in quick_access_products:
+            # Fill in any missing positions
+            while current_position < qap.position:
+                quick_access_list.append({
+                    'position': current_position,
+                    'product': None
+                })
+                current_position += 1
+            
+            quick_access_list.append({
+                'position': qap.position,
+                'product': qap.product
+            })
+            current_position = qap.position + 1
+        
+        # Fill remaining positions up to 10
+        while current_position <= 10:
+            quick_access_list.append({
+                'position': current_position,
+                'product': None
+            })
+            current_position += 1
+        
+        # Initialize form with product choices
         form = TransactionItemForm()
-        form.product_id.choices = [(p.id, f"{p.name} - ${p.price:.2f} ({p.quantity} in stock)") for p in Product.query.filter(Product.quantity > 0).order_by(Product.name).all()]
+        form.product_id.choices = [(p.id, f"{p.name} - ${p.price:.2f} ({p.quantity} in stock)") 
+                                 for p in Product.query
+                                 .filter(Product.quantity > 0)
+                                 .order_by(Product.name)
+                                 .with_entities(Product.id, Product.name, Product.price, Product.quantity)
+                                 .all()]
         
         if form.validate_on_submit():
             product = Product.query.get(form.product_id.data)
             if product:
-                cart = session.get('cart', [])
-                
                 # Get price (use custom price if provided)
                 price = form.custom_price.data if form.custom_price.data else product.price
                 
-                # Check if product already in cart
+                # Update existing cart item or add new one
+                updated = False
                 for item in cart:
                     if item['product_id'] == product.id:
                         item['quantity'] += form.quantity.data
-                        # Update price if custom price is provided
                         if form.custom_price.data:
                             item['price'] = price
-                        session['cart'] = cart
+                        updated = True
                         flash(f'Updated quantity for {product.name}', 'success')
-                        return redirect(url_for('new_transaction'))
+                        break
                 
-                cart.append({
-                    'product_id': product.id,
-                    'name': product.name,
-                    'price': price,
-                    'quantity': form.quantity.data,
-                    'is_custom_price': True if form.custom_price.data else False
-                })
+                if not updated:
+                    cart.append({
+                        'product_id': product.id,
+                        'name': product.name,
+                        'price': price,
+                        'quantity': form.quantity.data,
+                        'is_custom_price': bool(form.custom_price.data)
+                    })
+                    flash(f'Added {product.name} to cart', 'success')
+                
                 session['cart'] = cart
-                flash(f'Added {product.name} to cart', 'success')
                 return redirect(url_for('new_transaction'))
         
-        cart = session.get('cart', [])
-        total = sum(item['price'] * item['quantity'] for item in cart)
+        # Calculate subtotal first
+        subtotal = sum(item['price'] * item['quantity'] for item in cart)
         
-        # Get quick access products
-        quick_access_products = []
-        for position in range(1, 11):  # Positions 1-10
-            quick_product = QuickAccessProduct.query.filter_by(position=position).first()
-            if quick_product and quick_product.product.quantity > 0:
-                quick_access_products.append({
-                    'position': position,
-                    'product': quick_product.product
-                })
-            else:
-                quick_access_products.append({
-                    'position': position,
-                    'product': None
-                })
+        # Calculate GST only once (13% of subtotal)
+        gst_applied = session.get('apply_gst', True)  # Default to True
+        gst_amount = round(subtotal * 0.13, 2) if gst_applied else 0
         
-        search_form = ProductSearchForm()
+        # Calculate total after GST
+        total = round(subtotal + gst_amount, 2)
         
         # Get last transaction for history display
         last_transaction = None
         if 'last_transaction_id' in session and not cart:
             last_transaction = Transaction.query.get(session['last_transaction_id'])
         
-        # Calculate totals including GST
-        total = sum(item['price'] * item['quantity'] for item in cart)
-        gst_applied = session.get('apply_gst', True)  # Default to True
-        gst_amount = total * 0.13 if gst_applied else 0
+        search_form = ProductSearchForm()
         
         return render_template('new_transaction.html',
                              form=form,
                              cart=cart,
+                             subtotal=subtotal,
                              total=total,
                              gst_applied=gst_applied,
                              gst_amount=gst_amount,
                              search_form=search_form,
-                             quick_access_products=quick_access_products,
+                             quick_access_products=quick_access_list,
                              last_transaction=last_transaction)
 
     @app.route('/transactions/quick_add', methods=['GET', 'POST'])
@@ -336,45 +380,76 @@ def create_app(config_name='default'):
         # Handle product search form submission
         if form.validate_on_submit() or request.args.get('search_term'):
             search_term = form.search_term.data or request.args.get('search_term', '')
-            products = Product.query.filter(
-                (Product.name.ilike(f'%{search_term}%')) | 
-                (Product.sku.ilike(f'%{search_term}%')) | 
-                (Product.barcode.ilike(f'%{search_term}%')) | 
-                (Product.category.ilike(f'%{search_term}%'))
-            ).all()
+            # Use more efficient query with indexes
+            products = (Product.query
+                .filter(
+                    db.or_(
+                        Product.name.ilike(f'%{search_term}%'),
+                        Product.sku.ilike(f'%{search_term}%'),
+                        Product.barcode.ilike(f'%{search_term}%'),
+                        Product.category.ilike(f'%{search_term}%')
+                    )
+                )
+                .with_entities(
+                    Product.id,
+                    Product.name,
+                    Product.price,
+                    Product.quantity,
+                    Product.sku,
+                    Product.barcode,
+                    Product.category
+                )
+                .order_by(Product.name)
+                .all())
         
         # Handle quick add form submission
         if quick_add_form.validate_on_submit():
             product_code = quick_add_form.product_code.data
             quantity = quick_add_form.quantity.data
             
-            product = Product.query.filter((Product.barcode == product_code) | (Product.sku == product_code)).first()
+            # Use more efficient query with indexes
+            product = (Product.query
+                .filter(
+                    db.or_(
+                        Product.barcode == product_code,
+                        Product.sku == product_code
+                    )
+                )
+                .first())
             
             if product:
                 cart = session.get('cart', [])
+                updated = False
                 
-                # Check if product already in cart
+                # Update existing cart item or add new one
                 for item in cart:
                     if item['product_id'] == product.id:
                         item['quantity'] += quantity
-                        session['cart'] = cart
+                        updated = True
                         flash(f'Updated quantity for {product.name}', 'success')
-                        return redirect(url_for('search_products'))
+                        break
                 
-                cart.append({
-                    'product_id': product.id,
-                    'name': product.name,
-                    'price': product.price,
-                    'quantity': quantity
-                })
+                if not updated:
+                    cart.append({
+                        'product_id': product.id,
+                        'name': product.name,
+                        'price': product.price,
+                        'quantity': quantity
+                    })
+                    flash(f'Added {product.name} to cart', 'success')
+                
                 session['cart'] = cart
-                flash(f'Added {product.name} to cart', 'success')
                 return redirect(url_for('search_products'))
         
         cart = session.get('cart', [])
         total = sum(item['price'] * item['quantity'] for item in cart)
             
-        return render_template('product_search.html', form=form, quick_add_form=quick_add_form, products=products, cart=cart, total=total)
+        return render_template('product_search.html',
+                             form=form,
+                             quick_add_form=quick_add_form,
+                             products=products,
+                             cart=cart,
+                             total=total)
 
     @app.route('/api/products/search', methods=['GET'])
     @login_required
@@ -441,29 +516,32 @@ def create_app(config_name='default'):
         
         form = PaymentForm()
         
+        # Calculate totals including GST once
+        subtotal = sum(item['price'] * item['quantity'] for item in cart)
+        gst_applied = session.get('apply_gst', True)
+        gst_amount = round(subtotal * 0.13, 2) if gst_applied else 0
+        total_amount = round(subtotal + gst_amount, 2)
+        
         if form.validate_on_submit():
             payment_method = form.payment_method.data
             amount_tendered = form.amount_tendered.data
             discount_amount = form.discount_amount.data or 0
             
-            # Calculate totals including GST
-            subtotal = sum(item['price'] * item['quantity'] for item in cart)
-            gst_applied = session.get('apply_gst', True)
-            gst_amount = subtotal * 0.13 if gst_applied else 0
-            total_amount = subtotal + gst_amount - discount_amount
+            # Apply discount after GST
+            final_total = round(total_amount - discount_amount, 2)
             
-            if amount_tendered < total_amount:
+            if amount_tendered < final_total:
                 flash('Amount tendered must be at least equal to the total amount.', 'danger')
                 return render_template('checkout.html', 
                                     cart=cart, 
                                     form=form, 
-                                    subtotal=subtotal,
+                                    subtotal=subtotal, 
                                     gst_amount=gst_amount,
                                     total=total_amount)
             
-            # Create transaction
+            # Create transaction with a single database operation
             transaction = Transaction(
-                total_amount=total_amount,
+                total_amount=final_total,
                 payment_method=payment_method,
                 user_id=current_user.id,
                 discount_amount=discount_amount,
@@ -471,7 +549,10 @@ def create_app(config_name='default'):
                 gst_applied=gst_applied
             )
             
-            # Add items to transaction
+            # Prepare all items and product updates in memory
+            transaction_items = []
+            product_updates = []
+            
             for item in cart:
                 transaction_item = TransactionItem(
                     product_id=item['product_id'] if not item.get('is_custom_product') else None,
@@ -480,45 +561,50 @@ def create_app(config_name='default'):
                     custom_name=item.get('name') if item.get('is_custom_product') else None,
                     is_custom_product=item.get('is_custom_product', False)
                 )
-                transaction.items.append(transaction_item)
+                transaction_items.append(transaction_item)
                 
                 # Update product quantity if not a custom product
                 if not item.get('is_custom_product'):
                     product = Product.query.get(item['product_id'])
                     if product:
                         product.quantity -= item['quantity']
+                        product_updates.append(product)
             
-            db.session.add(transaction)
-            db.session.commit()
+            # Add all items to transaction
+            transaction.items = transaction_items
             
-            # Store the transaction ID in the session for history display
-            session['last_transaction_id'] = transaction.id
-            
-            # Clear cart
-            session.pop('cart', None)
-            session.pop('apply_gst', None)
-            
-            # Calculate change
-            change = amount_tendered - total_amount
-            
-            return render_template('receipt.html', 
-                                transaction=transaction, 
-                                payment_method=payment_method,
-                                amount_tendered=amount_tendered,
-                                change=change)
-        
-        # Calculate totals for initial page load
-        subtotal = sum(item['price'] * item['quantity'] for item in cart)
-        gst_applied = session.get('apply_gst', True)
-        gst_amount = subtotal * 0.13 if gst_applied else 0
-        total = subtotal + gst_amount
+            # Perform all database operations in a single transaction
+            try:
+                db.session.add(transaction)
+                for product in product_updates:
+                    db.session.merge(product)
+                db.session.commit()
+                
+                # Store the transaction ID and clear cart only after successful commit
+                session['last_transaction_id'] = transaction.id
+                session.pop('cart', None)
+                session.pop('apply_gst', None)
+                
+                # Calculate change
+                change = amount_tendered - final_total
+                
+                return render_template('receipt.html', 
+                                    transaction=transaction, 
+                                    payment_method=payment_method,
+                                    amount_tendered=amount_tendered,
+                                    change=change)
+                                    
+            except Exception as e:
+                db.session.rollback()
+                flash('An error occurred while processing the transaction. Please try again.', 'danger')
+                return redirect(url_for('checkout'))
         
         return render_template('checkout.html', 
                              cart=cart, 
                              form=form, 
                              subtotal=subtotal,
                              gst_amount=gst_amount,
-                             total=total)
+                             total=total_amount)
 
     # Returns routes
     @app.route('/returns', methods=['GET', 'POST'])
@@ -1189,9 +1275,31 @@ def create_app(config_name='default'):
     @app.route('/update_gst', methods=['POST'])
     @login_required
     def update_gst():
-        apply_gst = request.form.get('apply_gst') == 'true'
+        # Get the apply_gst value from the form data
+        apply_gst = request.form.get('apply_gst', 'false').lower() == 'true'
+        
+        # Store in session
         session['apply_gst'] = apply_gst
-        return jsonify({'success': True})
+        
+        # Calculate totals
+        cart = session.get('cart', [])
+        
+        # Calculate pure subtotal (without GST)
+        subtotal = sum(item['price'] * item['quantity'] for item in cart)
+        
+        # Calculate GST only if toggle is ON
+        gst_amount = round(subtotal * 0.13, 2) if apply_gst else 0
+        
+        # Calculate final total (subtotal + GST if applicable)
+        total = round(subtotal + gst_amount, 2)
+        
+        return jsonify({
+            'success': True,
+            'subtotal': subtotal,
+            'gst_amount': gst_amount,
+            'total': total,
+            'apply_gst': apply_gst
+        })
 
     return app
 

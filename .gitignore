@@ -16,7 +16,6 @@ lib64/
 parts/
 sdist/
 var/
-wheels/
 *.egg-info/
 .installed.cfg
 *.egg
@@ -148,10 +147,4 @@ venv.bak/
 
 # SQLite database
 *.sqlite
-*.db
-
-# Environment variables
-.env.local
-
-# Logs
-*.log 
+*.db 

@@ -63,17 +63,11 @@
                                         {% endfor %}
                                     </tbody>
                                     <tfoot>
+                                        {% if transaction.discount_amount > 0 %}
                                         <tr>
                                             <td colspan="3" class="text-end">Subtotal:</td>
-                                            <td>${{ "%.2f"|format(transaction.total_amount + transaction.discount_amount - transaction.gst_amount) }}</td>
+                                            <td>${{ "%.2f"|format(transaction.total_amount + transaction.discount_amount) }}</td>
                                         </tr>
-                                        {% if transaction.gst_amount > 0 %}
-                                        <tr>
-                                            <td colspan="3" class="text-end">GST (13%):</td>
-                                            <td>${{ "%.2f"|format(transaction.gst_amount) }}</td>
-                                        </tr>
-                                        {% endif %}
-                                        {% if transaction.discount_amount > 0 %}
                                         <tr>
                                             <td colspan="3" class="text-end">Discount:</td>
                                             <td>-${{ "%.2f"|format(transaction.discount_amount) }}</td>
